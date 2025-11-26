@@ -1,78 +1,17 @@
 from aiohttp import web
-from source.validator import DetectionValidator
-from source.siem_client import SIEMClient
+from app.service.app_svc import AppService
+from app.detmeter_api import DetMeterApi
 
-async def enable(services):
+async def setup_plugin(services):
     app_svc = services.get('app_svc')
+    data_svc = services.get('data_svc')
     
-    # components init 
-    siem_client = SIEMClient(services)
-    validator = DetectionValidator(services)
-    validator.siem_client = siem_client
+    detmeter_api = DetMeterApi(services)
+    services['detmeter_api'] = detmeter_api
     
-    # save in services 
-    services['detection_validator'] = validator
-    
-    # API endpoints 
-    app_svc.application.router.add_route(
-        'POST', '/plugin/detection-validator/validate/{operation_id}', 
-        lambda request: validate_operation(request, validator)
-    )
-    
-    app_svc.application.router.add_route(
-        'GET', '/plugin/detection-validator/results/{operation_id}', 
-        lambda request: get_results(request, validator)
-    )
-    
-    print("Detection Validator plugin enabled!")
+    app_svc.add_route('POST', '/plugin/detmeter/validate/{operation_id}', detmeter_api.validate_operation)
+    app_svc.add_route('GET', '/plugin/detmeter/results/{operation_id}', detmeter_api.get_results)
+    app_svc.add_route('GET', '/plugin/detmeter/gui', detmeter_api.gui)
 
-async def validate_operation(request, validator):
-    operation_id = request.match_info['operation_id']
-    
-    try:
-        report = await validator.validate_operation_detection(operation_id)
-        
-        if report:
-            return web.json_response({
-                'status': 'success',
-                'message': f'Detection validation completed for {operation_id}',
-                'data': report
-            })
-        else:
-            return web.json_response({
-                'status': 'error', 
-                'message': f'Failed to validate operation {operation_id}'
-            }, status=400)
-            
-    except Exception as e:
-        return web.json_response({
-            'status': 'error',
-            'message': f'Validation error: {str(e)}'
-        }, status=500)
-
-async def get_results(request, validator):
-    operation_id = request.match_info['operation_id']
-    
-    html = f"""
-    <html>
-    <head>
-        <title>Detection Validation Results - {operation_id}</title>
-        <style>
-            body {{ font-family: Arial; margin: 20px; }}
-            .technique {{ margin: 10px 0; padding: 10px; border-left: 4px solid; }}
-            .detected {{ border-color: green; background: #f0fff0; }}
-            .not-detected {{ border-color: red; background: #fff0f0; }}
-            .stats {{ background: #f5f5f5; padding: 15px; margin: 20px 0; }}
-        </style>
-    </head>
-    <body>
-        <h1>Detection Validation: {operation_id}</h1>
-        <p>Use POST /plugin/detection-validator/validate/{operation_id} to generate report</p>
-    </body>
-    </html>
-    """
-    
-    return web.Response(text=html, content_type='text/html')
-
-async def disable(services):
-    print("Detection Validator plugin disabled")
+def main(services):
+    services.get('app_svc').register_task(setup_plugin(services))
