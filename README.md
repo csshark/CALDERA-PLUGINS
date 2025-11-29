@@ -1,7 +1,7 @@
 # MITRE Caldera™ plugins 
 
 <p align="center">
-  <img src="caldera-plugins-pack.png"/>
+  <img src="caldera-plugins-pack.png" width="500" height="500">
 </p>
 
 <b>Disclaimer:</b> Caldera is open project and my plugins are existing on contribution rights. I do not reserve any rights to the plugins, and anyone can modify and deploy them for their own instance.
