@@ -1,0 +1,91 @@
+# General purpose 
+This doucment serves a companion to official MITRE Caldera documentation.
+
+---
+
+## Table of Contents
+<ul>1. Server Config related to <a href=https://caldera.readthedocs.io/en/latest/Server-Configuration.html>Server Configuration<a> section.</ul>
+<ul>2. How to deploy Caldera safely</ul> 
+<ul>3. Custom Plugin Development guide</ul>
+
+
+# 1. Server Config
+There are plenty of ways to deploy Caldera. In this section the config .yaml file parsing is going to be described.
+
+Instead of using a single local.yml file, it's recommended to create environment-specific configuration files. Let's cover this topic. Usually config file looks like that: 
+<pre><code># conf/production.yml
+ability_refresh: 60
+api_key_blue: SECURE_API_KEY
+api_key_red: SECURE_API_KEY
+app.contact.dns.domain: caldera.myorganisation.com
+app.contact.dns.socket: 0.0.0.0:8853
+app.contact.gist: API_KEY
+app.contact.html: /weather
+app.contact.http: http://0.0.0.0:8888 #IMPORTANT: Change it if using ssl plugin for HTTPS connection
+app.contact.slack.api_key: SLACK_TOKEN
+app.contact.slack.bot_id: SLACK_BOT_ID
+app.contact.slack.channel_id: SLACK_CHANNEL_ID
+app.contact.tunnel.ssh.host_key_file: REPLACE_WITH_KEY_FILE_PATH
+app.contact.tunnel.ssh.host_key_passphrase: REPLACE_WITH_KEY_FILE_PASSPHRASE
+app.contact.tunnel.ssh.socket: 0.0.0.0:8022
+app.contact.tunnel.ssh.user_name: sandcat
+app.contact.tunnel.ssh.user_password: s4ndc4t!
+app.contact.ftp.host: 0.0.0.0
+app.contact.ftp.port: 2222
+app.contact.ftp.pword: caldera
+app.contact.ftp.server.dir: ftp_dir
+app.contact.ftp.user: caldera_user
+app.contact.tcp: 0.0.0.0:7010
+app.contact.udp: 0.0.0.0:7011
+app.contact.websocket: 0.0.0.0:7012
+objects.planners.default: atomic # might be changed if user want different planner 
+crypt_salt: "RandomlyGeneratedSaltValueHere"
+encryption_key: "YourSecureEncryptionKey123!"
+exfil_dir: /tmp/caldera
+reachable_host_traits:
+- remote.host.fqdn
+- remote.host.ip
+host: 0.0.0.0 #This address is not recommended, please use real Caldera addr.
+plugins:
+- access
+- atomic
+- compass
+- debrief
+- fieldmanual
+- manx
+- response
+- sandcat
+- stockpile
+- training
+port: 8888 # if you are ok with this port keep it as it is, however this port leads to many problems...
+reports_dir: /tmp
+auth.login.handler.module: default #or custom
+requirements:
+  go:
+    command: go version
+    type: installed_program
+    version: 1.19
+  python:
+    attr: version
+    module: sys
+    type: python_module
+    version: 3.9.0
+# There is the painful part when you have to speak to administrator of LDAP implementation service. 
+# Parameters may vary depending on your organisation LDAP config.
+ldap:
+  dn: cn=users,cn=accounts,dc=demo1,dc=freeipa,dc=org
+  server: ldap://mycompanyldap.com
+  user_attr: uid
+  group_attr: objectClass
+  red_group: organizationalperson
+  # DON'T CREATE blue_group here - no need, if the red group attr is not satisfied user will be logged as blue team.
+# User Management (disabled when using LDAP)
+users:
+  red:
+    admin: "secure_password"
+  blue:
+    analyst: "secure_password"</code></pre>
+
+## 1.1 Port 8888 problems
+Many users have discovered changing 8888 port in config does absolutely nothing. Use this bash to find where 8888 got bound or hardcoded (execute in caldera dir): 
+<pre><code>find . -type f -exec grep -l "http://localhost:8888" {} \; | xargs -I {} sed -i 's|http://localhost:8888|http://192.168.0.10:8888|g' {}</code></pre>
