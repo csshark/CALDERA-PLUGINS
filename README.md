@@ -1,7 +1,7 @@
 # MITRE Caldera™ plugins 
 
 <p align="center">
-  <img src="https://github.com/mitre/caldera/blob/master/static/img/caldera-logo.png"/>
+  <img src="caldera-plugins-pack.png"/>
 </p>
 
 <b>Disclaimer:</b> Caldera is open project and my plugins are existing on contribution rights. I do not reserve any rights to the plugins, and anyone can modify and deploy them for their own instance.
