@@ -37,19 +37,18 @@
         <code>cp -r detmeter /path/to/caldera/plugins/</code></div>
         <p>2. Configure SIEM connection in Caldera's main config:</p>
       <pre><code>plugins:
-  detmeter:
-    siem:
-      type: arcsight
-      api_endpoint: https://your-siem.domain.com:8443
-      api_token: YOUR_API_TOKEN
-      verify_ssl: false
-      </code></pre>
+  - compass
+  - sandcat 
+  - ssl
+  - detmeter #enable me ! 
+  - atomic 
+  - fieldmanual</code></pre>
         <p>3. Restart Caldera service</p>
     </div>
     <div class="section">
         <h2>Usage</h2>  
         <h3>Web Interface</h3>
-        <p>Access via: <code>http://caldera-server:8888/plugin/detmeter/gui</code></p>        
+        <p>Access via: <code>http://caldera-server:8888/plugins/detmeter/gui</code></p>        
         <h3>API Endpoints</h3>
         <ul>
             <li><code>POST /plugin/detmeter/validate/{operation_id}</code> - Validate detection for operation</li>
