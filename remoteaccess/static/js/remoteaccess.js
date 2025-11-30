@@ -23,7 +23,7 @@ new Vue({
         showTestModal: false,
         testResults: null,
         calderaConfig: {
-            server: 'http://CALDERA_SERVER:8888'
+            server: 'http://localhost:8888'
         }
     },
     async mounted() {
@@ -34,53 +34,70 @@ new Vue({
         async loadCredentials() {
             try {
                 const response = await fetch('/plugin/remoteaccess/credentials');
-                this.credentials = await response.json();
+                if (response.ok) {
+                    this.credentials = await response.json();
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
             } catch (error) {
                 console.error('Failed to load credentials:', error);
-                this.results = { error: 'Failed to load credentials: ' + error.message };
+                this.showError('Failed to load credentials: ' + error.message);
             }
         },
         
         async addCredential() {
             if (!this.newCredential.host || !this.newCredential.username) {
-                alert('Host and username are required');
+                this.showError('Host and username are required');
                 return;
             }
             
+            if (!this.newCredential.port) {
+                this.newCredential.port = 22;
+            }
+            
             try {
-                await fetch('/plugin/remoteaccess/credentials', {
+                const response = await fetch('/plugin/remoteaccess/credentials', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(this.newCredential)
                 });
                 
-                this.newCredential = { host: '', username: '', password: '', key_file: '', port: 22 };
-                await this.loadCredentials();
-                this.results = { success: true, message: 'Credential added successfully' };
+                if (response.ok) {
+                    this.newCredential = { host: '', username: '', password: '', key_file: '', port: 22 };
+                    await this.loadCredentials();
+                    this.results = { success: true, message: 'Credential added successfully' };
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
             } catch (error) {
-                this.results = { error: 'Failed to add credential: ' + error.message };
+                this.showError('Failed to add credential: ' + error.message);
             }
         },
         
         async removeCredential(host) {
-            if (confirm(`Remove credentials for ${host}?`)) {
+            if (confirm(`Are you sure you want to remove credentials for ${host}?`)) {
                 try {
-                    await fetch('/plugin/remoteaccess/credentials', {
+                    const response = await fetch('/plugin/remoteaccess/credentials', {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ host })
                     });
-                    await this.loadCredentials();
-                    this.results = { success: true, message: 'Credential removed successfully' };
+                    
+                    if (response.ok) {
+                        await this.loadCredentials();
+                        this.results = { success: true, message: 'Credential removed successfully' };
+                    } else {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
                 } catch (error) {
-                    this.results = { error: 'Failed to remove credential: ' + error.message };
+                    this.showError('Failed to remove credential: ' + error.message);
                 }
             }
         },
         
         async deployAgent() {
             if (!this.deployment.host) {
-                alert('Please select a host');
+                this.showError('Please select a host');
                 return;
             }
             
@@ -92,16 +109,15 @@ new Vue({
                 });
                 
                 this.results = await response.json();
-                
                 await this.loadHostsWithAgents();
             } catch (error) {
-                this.results = { error: 'Deployment failed: ' + error.message };
+                this.showError('Deployment failed: ' + error.message);
             }
         },
         
         async getSystemInfo() {
             if (!this.selectedHost) {
-                alert('Please select a host');
+                this.showError('Please select a host');
                 return;
             }
             
@@ -117,12 +133,12 @@ new Vue({
                 
                 this.systemInfo = await response.json();
             } catch (error) {
-                this.systemInfo = { error: 'Failed to get system info: ' + error.message };
+                this.showError('Failed to get system info: ' + error.message);
             }
         },
         
         async shutdownHost() {
-            if (!this.selectedHost || !confirm(`ARE YOU SURE YOU WANT TO SHUTDOWN ${this.selectedHost}? This action cannot be undone!`)) {
+            if (!this.selectedHost || !confirm(`🚨 ARE YOU SURE YOU WANT TO SHUTDOWN ${this.selectedHost}? 🚨\n\nThis action cannot be undone!`)) {
                 return;
             }
             
@@ -138,7 +154,7 @@ new Vue({
                 
                 this.results = await response.json();
             } catch (error) {
-                this.results = { error: 'Shutdown failed: ' + error.message };
+                this.showError('Shutdown failed: ' + error.message);
             }
         },
         
@@ -150,8 +166,10 @@ new Vue({
         async loadHostsWithAgents() {
             try {
                 const response = await fetch('/plugin/remoteaccess/hosts');
-                const hostsData = await response.json();
-                this.hostsWithAgents = Object.keys(hostsData);
+                if (response.ok) {
+                    const hostsData = await response.json();
+                    this.hostsWithAgents = Object.keys(hostsData);
+                }
             } catch (error) {
                 console.error('Failed to load hosts with agents:', error);
             }
@@ -159,7 +177,7 @@ new Vue({
         
         async removeAgents() {
             if (!this.removeHost) {
-                alert('Please select a host');
+                this.showError('Please select a host');
                 return;
             }
             
@@ -177,17 +195,16 @@ new Vue({
                 this.results = await response.json();
                 this.showRemoveModal = false;
                 this.removeHost = '';
-                
                 await this.loadHostsWithAgents();
             } catch (error) {
-                this.results = { error: 'Failed to remove agents: ' + error.message };
+                this.showError('Failed to remove agents: ' + error.message);
             }
         },
         
         async testConnection(host = null) {
             const testHost = host || this.selectedHost;
             if (!testHost) {
-                alert('Please select a host');
+                this.showError('Please select a host');
                 return;
             }
             
@@ -208,7 +225,7 @@ new Vue({
         
         async showDeploymentCommand() {
             if (!this.deployment.host) {
-                alert('Please select a host');
+                this.showError('Please select a host');
                 return;
             }
             
@@ -238,19 +255,40 @@ new Vue({
         },
         
         copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                alert('Command copied to clipboard!');
-            }).catch(err => {
-                console.error('Failed to copy: ', err);
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = text;
-                document.body.appendChild(textArea);
-                textArea.select();
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    this.showSuccess('Command copied to clipboard!');
+                }).catch(err => {
+                    this._fallbackCopyToClipboard(text);
+                });
+            } else {
+                this._fallbackCopyToClipboard(text);
+            }
+        },
+        
+        _fallbackCopyToClipboard(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.opacity = '0';
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
                 document.execCommand('copy');
-                document.body.removeChild(textArea);
-                alert('Command copied to clipboard!');
-            });
+                this.showSuccess('Command copied to clipboard!');
+            } catch (err) {
+                this.showError('Failed to copy command to clipboard');
+            }
+            document.body.removeChild(textArea);
+        },
+        
+        showError(message) {
+            alert('Error: ' + message);
+        },
+        
+        showSuccess(message) {
+            // Could be replaced with a toast notification
+            console.log('Success:', message);
         }
     }
 });
