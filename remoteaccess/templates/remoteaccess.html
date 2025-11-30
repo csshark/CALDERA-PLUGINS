@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Remote Access</title>
+    <link rel="stylesheet" href="/remoteaccess/css/remoteaccess.css">
+</head>
+<body>
+    <div id="remoteaccess-app" class="remoteaccess-container">
+        <div class="header">
+            <h1>Remote Access Management</h1>
+            <p>Manage SSH credentials and deploy agents remotely</p>
+        </div>
+
+        <div class="main-content">
+            <div class="section">
+                <h2>SSH Credentials</h2>
+                <div class="credential-form">
+                    <input type="text" v-model="newCredential.host" placeholder="Hostname/IP" class="input-field">
+                    <input type="text" v-model="newCredential.username" placeholder="Username" class="input-field">
+                    <input type="password" v-model="newCredential.password" placeholder="Password" class="input-field">
+                    <input type="text" v-model="newCredential.key_file" placeholder="SSH Key Path (optional)" class="input-field">
+                    <input type="number" v-model="newCredential.port" placeholder="SSH Port" class="input-field" value="22">
+                    <button @click="addCredential" class="btn btn-primary">Add Credential</button>
+                </div>
+                
+                <div class="credentials-list">
+                    <div v-for="(cred, host) in credentials" :key="host" class="credential-item">
+                        <span class="host">{{ host }}</span>
+                        <span class="username">{{ cred.username }}:{{ cred.port }}</span>
+                        <button @click="testConnection(host)" class="btn btn-info">Test</button>
+                        <button @click="removeCredential(host)" class="btn btn-danger">Remove</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Deploy Agents</h2>
+                <div class="deployment-controls">
+                    <select v-model="deployment.host" class="input-field">
+                        <option value="">Select Host</option>
+                        <option v-for="host in Object.keys(credentials)" :value="host">{{ host }}</option>
+                    </select>
+                    
+                    <select v-model="deployment.agentType" class="input-field">
+                        <option value="red">Red Agent</option>
+                        <option value="blue">Blue Agent</option>
+                    </select>
+                    
+                    <select v-model="deployment.platform" class="input-field">
+                        <option value="windows">Windows</option>
+                        <option value="linux">Linux</option>
+                        <option value="macos">macOS</option>
+                    </select>
+                    
+                    <button @click="deployAgent" class="btn btn-success">Deploy Agent</button>
+                    <button @click="showDeploymentCommand" class="btn btn-info">Preview Command</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Host Management</h2>
+                <div class="host-controls">
+                    <select v-model="selectedHost" class="input-field">
+                        <option value="">Select Host</option>
+                        <option v-for="host in Object.keys(credentials)" :value="host">{{ host }}</option>
+                    </select>
+                    
+                    <button @click="getSystemInfo" class="btn btn-info">Get System Info</button>
+                    <button @click="testConnection()" class="btn btn-secondary">Test Connection</button>
+                    <button @click="shutdownHost" class="btn btn-warning">Shutdown Host</button>
+                    <button @click="showRemoveAgentsModal" class="btn btn-danger">Remove Agents</button>
+                </div>
+                
+                <div v-if="systemInfo" class="system-info">
+                    <h3>System Information</h3>
+                    <pre>{{ systemInfo }}</pre>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Operation Results</h2>
+                <div class="results">
+                    <div v-if="results && results.command_preview" class="command-preview">
+                        <h4>Deployment Command Preview:</h4>
+                        <pre class="command-code">{{ results.command_preview }}</pre>
+                        <button @click="copyToClipboard(results.command_preview)" class="btn btn-secondary">
+                            Copy to Clipboard
+                        </button>
+                    </div>
+                    <div v-else>
+                        <pre>{{ results }}</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showRemoveModal" class="modal">
+            <div class="modal-content">
+                <h3>Remove Agents from Host</h3>
+                <select v-model="removeHost" class="input-field">
+                    <option value="">Select Host</option>
+                    <option v-for="host in hostsWithAgents" :value="host">{{ host }}</option>
+                </select>
+                <div class="modal-actions">
+                    <button @click="removeAgents" class="btn btn-danger">Remove Agents</button>
+                    <button @click="showRemoveModal = false" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Connection Modal -->
+        <div v-if="showTestModal" class="modal">
+            <div class="modal-content">
+                <h3>Connection Test Results</h3>
+                <pre>{{ testResults }}</pre>
+                <div class="modal-actions">
+                    <button @click="showTestModal = false" class="btn btn-secondary">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
+    <script src="/remoteaccess/js/remoteaccess.js"></script>
+</body>
+</html>
