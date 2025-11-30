@@ -86,6 +86,27 @@ users:
   blue:
     analyst: "secure_password"</code></pre>
 
+Security first. All keys in this config file for production deployment should be ENCRYPTED! 
+<pre><code>openssl rand -base64 32  # for encryption_key
+openssl rand -base64 32  # for crypt_salt
+openssl rand -base64 32  # for API keys</code></pre>
+
+
+
 ## 1.1 Port 8888 problems
 Many users have discovered changing 8888 port in config does absolutely nothing. Use this bash to find where 8888 got bound or hardcoded (execute in caldera dir): 
 <pre><code>find . -type f -exec grep -l "http://localhost:8888" {} \; | xargs -I {} sed -i 's|http://localhost:8888|http://192.168.0.10:8888|g' {}</code></pre>
+In Caldera 5.3x < there was a problem with hardcoded port 8888 - Caldera was serving on port 8888 <b>always</b>. For now people are ignoring it in case of using <a href="https://github.com/mitre/ssl">ssl</a> plugin. There is a bypass by modyfing *server.py* file in main Caldera directory: 
+<pre><code>async def start_server():
+    await auth_svc.apply(app_svc.application, BaseWorld.get_config("users"))
+    runner = web.AppRunner(app_svc.application)
+    await runner.setup()
+    
+    # FORCE PORT , ex. 8222
+    forced_port = 8222  # or BaseWorld.get_config("port") if u prefer to use config
+    forced_host = BaseWorld.get_config("host") # we need to parse host for this function as well
+    
+    logging.info(f"FORCED - Starting server on {forced_host}:{forced_port}")
+    await web.TCPSite(runner, forced_host, forced_port).start()</code></pre>
+
+    
