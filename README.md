@@ -1,4 +1,4 @@
-# MITRE Caldera™ plugins 
+# Crater - MITRE Caldera™ plugins pack 
 
 <p align="center">
   <img src="caldera-plugins-pack.png" width="500" height="500">
