@@ -74,12 +74,12 @@ class DetMeterService:
         }
     async def _extract_techniques(self, operation) -> List[str]:
     """Extract techniques from operation - public version"""
-    techniques_used = []
-    if hasattr(operation, 'chain'):
-        for link in operation.chain:
-            if hasattr(link, 'ability') and link.ability:
-                tech_id = getattr(link.ability, 'technique_id', None)
-                if tech_id and tech_id.strip():
+        techniques_used = []
+        if hasattr(operation, 'chain'):
+            for link in operation.chain:
+                if hasattr(link, 'ability') and link.ability:
+                    tech_id = getattr(link.ability, 'technique_id', None)
+                        if tech_id and tech_id.strip():
                     techniques_used.append(tech_id.strip())
     return list(set(techniques_used))
     async def _simulate_siem_query(self, techniques: List[str], siem_name: str) -> List[str]:
