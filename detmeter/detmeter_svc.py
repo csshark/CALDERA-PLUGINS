@@ -1,75 +1,61 @@
 """
 DetMeter Service - Core functionality
-Simplified version that works
 """
 import logging
-import yaml
-import aiohttp
-import asyncio
 import random
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
+import asyncio
+from datetime import datetime
+from typing import Dict, List, Any
+
+logger = logging.getLogger('detmeter_svc')
 
 class DetMeterService:
     def __init__(self, services):
         self.services = services
         self.data_svc = services.get('data_svc')
-        self.log = logging.getLogger('detmeter_svc')
-        self.config = self._load_config()
         
-    def _load_config(self) -> Dict:
-        """Load configuration"""
-        try:
-            with open('conf/local.yml', 'r') as f:
-                config = yaml.safe_load(f)
-                if config and 'detmeter' in config:
-                    return config['detmeter']
-        except:
-            pass
-        
-        # Default configuration
-        return {
-            'siem_connections': {
-                'splunk': {'enabled': False, 'endpoint': ''},
-                'arcsight': {'enabled': False, 'endpoint': ''},
-                'elastic': {'enabled': False, 'endpoint': ''},
-                'qradar': {'enabled': False, 'endpoint': ''}
-            },
-            'default_timeframe': 24
+        # Konfiguracja SIEM (w prawdziwej wersji z pliku config)
+        self.siem_config = {
+            'splunk': {'enabled': True, 'name': 'Splunk'},
+            'arcsight': {'enabled': True, 'name': 'ArcSight'},
+            'elastic': {'enabled': True, 'name': 'Elastic'},
+            'qradar': {'enabled': False, 'name': 'QRadar'}
         }
     
     async def analyze_operation(self, operation_id: str) -> Dict[str, Any]:
-        """Analyze operation detection"""
-        self.log.info(f'Analyzing operation: {operation_id}')
+        """Główna funkcja analizy"""
+        logger.info(f'Analyzing operation: {operation_id}')
         
-        # Get operation
+        # 1. Znajdź operację w Calderze
         operations = await self.data_svc.locate('operations', dict(id=operation_id))
         if not operations:
-            return {'error': 'Operation not found', 'success': False}
+            return {'error': f'Operation {operation_id} not found', 'success': False}
         
         operation = operations[0]
         
-        # Extract techniques (simplified)
+        # 2. Wyciągnij techniki MITRE z operacji
         techniques = self._extract_techniques(operation)
         
-        # Query SIEMs
+        # 3. Zapytaj SIEMy (symulacja)
         siem_results = {}
-        for siem_name, config in self.config.get('siem_connections', {}).items():
-            if config.get('enabled'):
-                result = await self._query_siem(siem_name, techniques)
+        for siem_name, config in self.siem_config.items():
+            if config['enabled']:
+                result = await self._simulate_siem_query(siem_name, techniques)
                 siem_results[siem_name] = result
         
+        # 4. Przygotuj wynik
         return {
             'success': True,
             'operation_id': operation.id,
             'operation_name': operation.name,
             'techniques_used': techniques,
             'siem_results': siem_results,
-            'analysis_time': datetime.now().isoformat()
+            'analysis_time': datetime.now().isoformat(),
+            'timestamp': datetime.now().timestamp()
         }
     
     def _extract_techniques(self, operation) -> List[str]:
-        """Extract technique IDs from operation"""
+        """Wyciąga ID technik MITRE z operacji"""
         techniques = []
         
         if not hasattr(operation, 'chain'):
@@ -83,59 +69,44 @@ class DetMeterService:
         
         return techniques
     
-    async def _query_siem(self, siem_name: str, techniques: List[str]) -> Dict[str, Any]:
-        """Query a SIEM (simulated for now)"""
-        # Simulate network delay
-        await asyncio.sleep(0.5)
+    async def _simulate_siem_query(self, siem_name: str, techniques: List[str]) -> Dict[str, Any]:
+        """Symuluje zapytanie do SIEM (docelowo prawdziwe API)"""
+        await asyncio.sleep(0.5)  # Symulacja opóźnienia sieci
         
-        # Simulate detection based on SIEM type
-        detection_rates = {
-            'splunk': 0.7,
-            'elastic': 0.75,
-            'arcsight': 0.65,
-            'qradar': 0.6
+        # Każdy SIEM ma inną skuteczność
+        detection_chance = {
+            'splunk': 0.75,
+            'elastic': 0.80,
+            'arcsight': 0.70,
+            'qradar': 0.65
         }
         
-        rate = detection_rates.get(siem_name.lower(), 0.5)
-        random.seed(hash(siem_name))
+        chance = detection_chance.get(siem_name, 0.5)
+        random.seed(hash(siem_name + str(techniques)))
         
         detected = []
         for tech in techniques:
-            if random.random() < rate:
+            if random.random() < chance:
                 detected.append(tech)
         
         return {
             'detected_techniques': detected,
             'detection_rate': len(detected) / len(techniques) * 100 if techniques else 0,
-            'events_found': len(detected) * random.randint(1, 5),
-            'query_time': random.uniform(0.5, 2.0)
+            'events_found': len(detected) * random.randint(1, 10),
+            'query_time': random.uniform(0.5, 3.0),
+            'siem_name': siem_name
         }
     
     async def get_siem_status(self) -> Dict[str, Any]:
-        """Get SIEM connection status"""
+        """Zwraca status połączeń z SIEM"""
         status = {}
         
-        for siem_name, config in self.config.get('siem_connections', {}).items():
-            siem_status = {
-                'enabled': config.get('enabled', False),
-                'configured': bool(config.get('endpoint')),
-                'endpoint': config.get('endpoint', 'Not configured'),
-                'last_checked': datetime.now().isoformat()
+        for siem_name, config in self.siem_config.items():
+            status[siem_name] = {
+                'enabled': config['enabled'],
+                'name': config['name'],
+                'status': 'configured' if config['enabled'] else 'disabled',
+                'last_check': datetime.now().isoformat()
             }
-            
-            # Test connectivity if enabled
-            if config.get('enabled') and config.get('endpoint'):
-                try:
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(config['endpoint'], timeout=3, ssl=False) as resp:
-                            siem_status['reachable'] = resp.status < 500
-                            siem_status['status'] = 'reachable' if resp.status < 500 else 'unreachable'
-                except:
-                    siem_status['reachable'] = False
-                    siem_status['status'] = 'error'
-            else:
-                siem_status['status'] = 'disabled'
-            
-            status[siem_name] = siem_status
         
         return status
