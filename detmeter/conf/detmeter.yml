@@ -1,30 +1,27 @@
-app:
-  detmeter:
-    default_timeframe_hours: 48
-    max_events_per_siem: 2000
-    cache_enabled: true
-    cache_ttl_minutes: 15
+detmeter:
+  default_timeframe_hours: 48
+  cache_enabled: true
+  
+  siem_connections:
+    splunk:
+      type: splunk
+      enabled: false
+      api_endpoint: "https://your-splunk-server:8089"
+      token: "your-token-here"
+      verify_ssl: false
     
-    siem_connections:
-      splunk:
-        type: splunk
-        enabled: true
-        api_endpoint: https://splunk.company.com:8089
-        token: your-splunk-token-here
-        verify_ssl: false
-        
-      arcsight:
-        type: arcsight
-        enabled: true
-        api_endpoint: https://arcsight.company.com:8443
-        username: arcsight-user
-        password: arcsight-password
-        verify_ssl: false
-        
-      elastic:
-        type: elastic
-        enabled: false  # Not yet configured
-        api_endpoint: https://elastic.company.com:9200
-        username: elastic-user
-        password: elastic-password
-        verify_ssl: true
+    arcsight:
+      type: arcsight
+      enabled: false
+      api_endpoint: "https://your-arcsight-server:8443"
+      username: "your-username"
+      password: "your-password"
+      verify_ssl: false
+    
+    elastic:
+      type: elastic
+      enabled: false
+      api_endpoint: "https://your-elastic-server:9200"
+      username: "elastic"
+      password: "your-password"
+      verify_ssl: false
