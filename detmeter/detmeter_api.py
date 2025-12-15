@@ -374,4 +374,516 @@ class DetMeterApi:
                         </div>
                         
                         <!-- Techniques Tab -->
-                        <div id="techniques-tab" class="
+                        <div id="techniques-tab" class="tab-content">
+                            <div class="card">
+                                <h2>MITRE ATT&CK Techniques</h2>
+                                <div id="techniquesList"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Loading overlay -->
+                    <div id="loading" class="loading">
+                        <div class="spinner"></div>
+                        <p>Processing request...</p>
+                    </div>
+                    
+                    <!-- Alert messages -->
+                    <div id="alertContainer" style="position: fixed; top: 20px; right: 20px; width: 300px; z-index: 1000;"></div>
+                </div>
+
+                <script>
+                    let currentOperation = null;
+                    let detectionChart = null;
+                    
+                    // Initialize on load
+                    document.addEventListener('DOMContentLoaded', function() {
+                        loadOperations();
+                        loadTechniques();
+                    });
+                    
+                    function switchTab(tabName) {
+                        // Update tabs
+                        document.querySelectorAll('.tab').forEach(tab => {
+                            tab.classList.remove('active');
+                        });
+                        document.querySelectorAll('.tab-content').forEach(content => {
+                            content.classList.remove('active');
+                        });
+                        
+                        // Activate selected tab
+                        document.querySelector(`.tab[onclick="switchTab('${tabName}')"]`).classList.add('active');
+                        document.getElementById(`${tabName}-tab`).classList.add('active');
+                    }
+                    
+                    async function loadOperations() {
+                        showLoading();
+                        try {
+                            const response = await fetch('/detmeter/api/operations');
+                            const operations = await response.json();
+                            
+                            const select = document.getElementById('operationSelect');
+                            const container = document.getElementById('operationsContainer');
+                            
+                            select.innerHTML = '<option value="">Select an operation...</option>';
+                            container.innerHTML = '';
+                            
+                            operations.forEach(op => {
+                                // Add to select
+                                const option = document.createElement('option');
+                                option.value = op.id;
+                                option.textContent = `${op.name} (${op.id})`;
+                                select.appendChild(option);
+                                
+                                // Add to list
+                                const item = document.createElement('div');
+                                item.className = 'operation-item';
+                                item.dataset.id = op.id;
+                                item.innerHTML = `
+                                    <div class="operation-info">
+                                        <div class="operation-name">${op.name}</div>
+                                        <div class="operation-details">
+                                            ID: ${op.id} | Start: ${new Date(op.start).toLocaleDateString()} | 
+                                            Techniques: ${op.technique_count || 0}
+                                        </div>
+                                    </div>
+                                    <button class="btn" style="padding: 8px 16px;" onclick="selectOperation('${op.id}')">
+                                        Select
+                                    </button>
+                                `;
+                                container.appendChild(item);
+                            });
+                            
+                        } catch (error) {
+                            showAlert('Error loading operations: ' + error.message, 'error');
+                        } finally {
+                            hideLoading();
+                        }
+                    }
+                    
+                    function selectOperation(operationId) {
+                        currentOperation = operationId;
+                        
+                        // Update UI
+                        document.querySelectorAll('.operation-item').forEach(item => {
+                            item.classList.remove('selected');
+                            if (item.dataset.id === operationId) {
+                                item.classList.add('selected');
+                            }
+                        });
+                        
+                        // Enable analyze button
+                        document.getElementById('analyzeBtn').disabled = false;
+                        
+                        // Update select
+                        document.getElementById('operationSelect').value = operationId;
+                        
+                        showAlert(`Operation ${operationId} selected`, 'success');
+                    }
+                    
+                    async function analyzeOperation() {
+                        if (!currentOperation) {
+                            showAlert('Please select an operation first', 'error');
+                            return;
+                        }
+                        
+                        showLoading();
+                        try {
+                            const response = await fetch('/detmeter/api/analyze', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ operation_id: currentOperation })
+                            });
+                            
+                            const result = await response.json();
+                            
+                            if (result.error) {
+                                showAlert('Analysis error: ' + result.error, 'error');
+                                return;
+                            }
+                            
+                            displayResults(result);
+                            
+                        } catch (error) {
+                            showAlert('Analysis failed: ' + error.message, 'error');
+                        } finally {
+                            hideLoading();
+                        }
+                    }
+                    
+                    function displayResults(data) {
+                        // Show results container
+                        document.getElementById('resultsContainer').style.display = 'block';
+                        
+                        // Update operation info
+                        document.getElementById('operationInfo').innerHTML = `
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                                <h3 style="margin-top: 0; color: #2c3e50;">${data.operation_name}</h3>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">
+                                    <div><strong>Operation ID:</strong> ${data.operation_id}</div>
+                                    <div><strong>Techniques:</strong> ${data.techniques_used.list.length}</div>
+                                    <div><strong>Analysis Time:</strong> ${new Date(data.analysis_time).toLocaleString()}</div>
+                                    <div><strong>SIEMs Tested:</strong> ${Object.keys(data.siem_results).length}</div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Prepare chart data
+                        const siemNames = [];
+                        const detectionRates = [];
+                        const colors = [];
+                        
+                        for (const [siem, results] of Object.entries(data.siem_results)) {
+                            siemNames.push(siem.toUpperCase());
+                            detectionRates.push(results.detection_rate);
+                            
+                            // Color based on detection rate
+                            if (results.detection_rate >= 70) colors.push('#27ae60');
+                            else if (results.detection_rate >= 40) colors.push('#f39c12');
+                            else colors.push('#e74c3c');
+                        }
+                        
+                        // Create or update chart
+                        const ctx = document.getElementById('detectionChart').getContext('2d');
+                        if (detectionChart) {
+                            detectionChart.destroy();
+                        }
+                        
+                        detectionChart = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: siemNames,
+                                datasets: [{
+                                    label: 'Detection Rate (%)',
+                                    data: detectionRates,
+                                    backgroundColor: colors,
+                                    borderColor: colors.map(c => c.replace('0.8', '1')),
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        max: 100,
+                                        ticks: {
+                                            callback: function(value) {
+                                                return value + '%';
+                                            }
+                                        },
+                                        title: {
+                                            display: true,
+                                            text: 'Detection Rate'
+                                        }
+                                    },
+                                    x: {
+                                        title: {
+                                            display: true,
+                                            text: 'SIEM System'
+                                        }
+                                    }
+                                },
+                                plugins: {
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                return `Detection: ${context.parsed.y}%`;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                        
+                        // Display detailed results
+                        const resultsGrid = document.getElementById('siemResults');
+                        resultsGrid.innerHTML = '';
+                        
+                        for (const [siem, results] of Object.entries(data.siem_results)) {
+                            const rateClass = results.detection_rate >= 70 ? 'rate-high' : 
+                                            results.detection_rate >= 40 ? 'rate-medium' : 'rate-low';
+                            
+                            const card = document.createElement('div');
+                            card.className = 'result-card';
+                            card.innerHTML = `
+                                <div class="siem-header">
+                                    <div class="siem-name">${siem.toUpperCase()}</div>
+                                    <div class="detection-rate ${rateClass}">${results.detection_rate}%</div>
+                                </div>
+                                <div><strong>Events Found:</strong> ${results.events_found}</div>
+                                <div><strong>Techniques Detected:</strong> ${results.techniques_detected.length}/${data.techniques_used.list.length}</div>
+                                ${results.query_time ? `<div><strong>Query Time:</strong> ${results.query_time.toFixed(2)}s</div>` : ''}
+                                <div class="technique-list" style="margin-top: 10px;">
+                                    ${results.techniques_detected.map(t => 
+                                        `<div class="technique-item">${t}</div>`
+                                    ).join('')}
+                                </div>
+                            `;
+                            resultsGrid.appendChild(card);
+                        }
+                        
+                        showAlert('Analysis completed successfully', 'success');
+                    }
+                    
+                    async function checkSIEMStatus() {
+                        showLoading();
+                        try {
+                            const response = await fetch('/detmeter/api/status');
+                            const status = await response.json();
+                            
+                            const container = document.getElementById('statusResults');
+                            container.innerHTML = '<div class="results-grid">';
+                            
+                            for (const [siem, info] of Object.entries(status)) {
+                                const statusClass = info.status === 'reachable' ? 'status-online' : 
+                                                  info.status === 'disabled' ? 'status-disabled' : 'status-offline';
+                                
+                                container.innerHTML += `
+                                    <div class="result-card">
+                                        <div class="siem-header">
+                                            <div class="siem-name">${siem.toUpperCase()}</div>
+                                            <span class="status-badge ${statusClass}">${info.status}</span>
+                                        </div>
+                                        <div><strong>Type:</strong> ${info.type}</div>
+                                        <div><strong>Enabled:</strong> ${info.enabled ? 'Yes' : 'No'}</div>
+                                        <div><strong>Endpoint:</strong><br><small>${info.endpoint}</small></div>
+                                        ${info.reachable !== undefined ? `<div><strong>Reachable:</strong> ${info.reachable ? 'Yes' : 'No'}</div>` : ''}
+                                        ${info.response_time ? `<div><strong>Response Time:</strong> ${info.response_time.toFixed(2)}s</div>` : ''}
+                                        ${info.version ? `<div><strong>Version:</strong> ${info.version}</div>` : ''}
+                                        ${info.last_check ? `<div><strong>Last Check:</strong> ${new Date(info.last_check).toLocaleTimeString()}</div>` : ''}
+                                    </div>
+                                `;
+                            }
+                            
+                            container.innerHTML += '</div>';
+                            
+                        } catch (error) {
+                            showAlert('Status check failed: ' + error.message, 'error');
+                        } finally {
+                            hideLoading();
+                        }
+                    }
+                    
+                    async function loadTechniques() {
+                        try {
+                            const response = await fetch('/detmeter/api/techniques');
+                            const techniques = await response.json();
+                            
+                            const container = document.getElementById('techniquesList');
+                            if (techniques.length === 0) {
+                                container.innerHTML = '<p>No techniques loaded</p>';
+                                return;
+                            }
+                            
+                            container.innerHTML = '<div class="results-grid">';
+                            
+                            techniques.forEach(tech => {
+                                container.innerHTML += `
+                                    <div class="result-card">
+                                        <div class="siem-header">
+                                            <div class="siem-name">${tech.id}</div>
+                                        </div>
+                                        <div><strong>${tech.name}</strong></div>
+                                        <div><strong>Tactics:</strong> ${tech.tactics.join(', ')}</div>
+                                    </div>
+                                `;
+                            });
+                            
+                            container.innerHTML += '</div>';
+                            
+                        } catch (error) {
+                            document.getElementById('techniquesList').innerHTML = 
+                                '<p style="color: #e74c3c;">Error loading techniques</p>';
+                        }
+                    }
+                    
+                    function refreshOperations() {
+                        loadOperations();
+                    }
+                    
+                    function clearResults() {
+                        document.getElementById('resultsContainer').style.display = 'none';
+                        document.getElementById('operationsContainer').innerHTML = '';
+                        document.getElementById('operationSelect').value = '';
+                        currentOperation = null;
+                        document.getElementById('analyzeBtn').disabled = true;
+                        
+                        if (detectionChart) {
+                            detectionChart.destroy();
+                            detectionChart = null;
+                        }
+                        
+                        showAlert('Results cleared', 'info');
+                    }
+                    
+                    function showLoading() {
+                        document.getElementById('loading').classList.add('active');
+                    }
+                    
+                    function hideLoading() {
+                        document.getElementById('loading').classList.remove('active');
+                    }
+                    
+                    function showAlert(message, type = 'info') {
+                        const container = document.getElementById('alertContainer');
+                        const alert = document.createElement('div');
+                        alert.className = `alert alert-${type}`;
+                        alert.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>${message}</span>
+                                <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; cursor: pointer; font-size: 20px;">
+                                    &times;
+                                </button>
+                            </div>
+                        `;
+                        
+                        container.appendChild(alert);
+                        
+                        // Auto-remove after 5 seconds
+                        setTimeout(() => {
+                            if (alert.parentElement) {
+                                alert.remove();
+                            }
+                        }, 5000);
+                    }
+                </script>
+            </body>
+            </html>
+            """
+            
+            with open(html_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            self.log.info(f"Created default HTML interface at {html_path}")
+
+    async def gui(self, request):
+        """Serve the main GUI interface"""
+        try:
+            html_path = os.path.join(self.static_dir, 'index.html')
+            with open(html_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            
+            return web.Response(text=html_content, content_type='text/html')
+            
+        except FileNotFoundError:
+            return web.Response(
+                text='<h1>DetMeter</h1><p>Interface not found. Please check plugin installation.</p>',
+                content_type='text/html'
+            )
+
+    async def serve_static(self, request):
+        """Serve static files"""
+        path = request.match_info['path']
+        file_path = os.path.join(self.static_dir, path)
+        
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            return web.FileResponse(file_path)
+        return web.Response(status=404)
+
+    async def analyze_operation(self, request):
+        """Analyze operation detection"""
+        try:
+            if not self.detmeter_svc:
+                return web.json_response({'error': 'DetMeter service not available'}, status=500)
+            
+            data = await request.json()
+            operation_id = data.get('operation_id')
+            
+            if not operation_id:
+                return web.json_response({'error': 'Operation ID is required'}, status=400)
+            
+            # Optional parameters
+            timeframe = data.get('timeframe_hours')
+            
+            # Perform analysis
+            result = await self.detmeter_svc.analyze_operation(operation_id, timeframe)
+            
+            return web.json_response(result)
+            
+        except json.JSONDecodeError:
+            return web.json_response({'error': 'Invalid JSON data'}, status=400)
+        except Exception as e:
+            self.log.error(f"Error in analyze_operation: {str(e)}")
+            return web.json_response({'error': str(e)}, status=500)
+
+    async def get_siem_status(self, request):
+        """Get SIEM connection status"""
+        try:
+            if not self.detmeter_svc:
+                return web.json_response({'error': 'DetMeter service not available'}, status=500)
+            
+            status = await self.detmeter_svc.get_siem_status()
+            return web.json_response(status)
+            
+        except Exception as e:
+            self.log.error(f"Error in get_siem_status: {str(e)}")
+            return web.json_response({'error': str(e)}, status=500)
+
+    async def get_operations(self, request):
+        """Get list of available operations"""
+        try:
+            # Get all operations
+            operations = await self.data_svc.locate('operations')
+            
+            # Format response
+            formatted_ops = []
+            for op in operations:
+                if hasattr(op, 'id') and op.id:
+                    # Get technique count if detmeter service is available
+                    tech_count = 0
+                    if self.detmeter_svc:
+                        techniques = await self.detmeter_svc._extract_techniques_with_details(op)
+                        tech_count = len(techniques)
+                    
+                    formatted_ops.append({
+                        'id': op.id,
+                        'name': getattr(op, 'name', 'Unnamed Operation'),
+                        'start': getattr(op, 'start', None),
+                        'finish': getattr(op, 'finish', None),
+                        'state': getattr(op, 'state', 'unknown'),
+                        'technique_count': tech_count
+                    })
+            
+            return web.json_response(formatted_ops)
+            
+        except Exception as e:
+            self.log.error(f"Error in get_operations: {str(e)}")
+            return web.json_response({'error': str(e)}, status=500)
+
+    async def get_techniques(self, request):
+        """Get list of known MITRE techniques"""
+        try:
+            if not self.detmeter_svc:
+                return web.json_response([], status=200)
+            
+            # Get techniques from the service
+            techniques = []
+            mitre_data = getattr(self.detmeter_svc, 'mitre_techniques', {})
+            
+            for tech_id, info in mitre_data.items():
+                techniques.append({
+                    'id': tech_id,
+                    'name': info.get('name', 'Unknown'),
+                    'tactics': info.get('tactics', [])
+                })
+            
+            return web.json_response(techniques)
+            
+        except Exception as e:
+            self.log.error(f"Error in get_techniques: {str(e)}")
+            return web.json_response([], status=200)
+
+    async def health_check(self, request):
+        """Health check endpoint"""
+        status = {
+            'status': 'healthy',
+            'plugin': 'detmeter',
+            'version': '1.0.0',
+            'services': {
+                'detmeter_svc': self.detmeter_svc is not None,
+                'data_svc': self.data_svc is not None
+            },
+            'timestamp': datetime.now().isoformat() if hasattr(datetime, 'now') else 'N/A'
+        }
+        return web.json_response(status)
