@@ -1,0 +1,15 @@
+# Configuration for SIEM connections in the DetMeter plugin.
+siem_connections:
+  arcsight:
+    api_endpoint: 'https://your-arcsight.domain.com:8443'
+    api_username: 'your_user'
+    api_password: 'your_password' # Store securely in production!
+    enabled: false
+  splunk:
+    api_endpoint: 'https://your-splunk.domain.com:8089'
+    api_token: 'your_splunk_token'
+    enabled: true
+  qradar:
+    api_endpoint: 'https://your-qradar.domain.com/api'
+    api_token: 'your_qradar_token'
+    enabled: false
