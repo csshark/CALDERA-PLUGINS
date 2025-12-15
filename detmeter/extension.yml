@@ -1,0 +1,17 @@
+name: detmeter
+description: SIEM Systems Detection Rate Validator
+version: 1.0.0
+access:
+  - admin
+  - red
+  - blue
+gui:
+  - path: /detmeter
+    name: SIEM DetMeter
+    component: DetMeter
+    icon: chart-bar
+    order: 90
+    permissions:
+      - red
+      - blue
+      - admin
