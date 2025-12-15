@@ -1,6 +1,6 @@
 """
-DetMeter Plugin for Caldera
-Minimal working version
+DetMeter Plugin for Caldera - FIXED VERSION
+Doesn't hijack all /plugin/ routes
 """
 import logging
 import os
@@ -8,9 +8,8 @@ from aiohttp import web
 
 logger = logging.getLogger('detmeter')
 
-# === WAŻNE: Caldera szuka tych zmiennych na poziomie modułu ===
+# === METADATA PLUGINU ===
 name = 'detmeter'
-address = '/plugins/detmeter'
 description = 'SIEM Detection Comparison Tool'
 
 async def enable(services):
@@ -31,7 +30,7 @@ async def enable(services):
         app_svc = services.get('app_svc')
         app = app_svc.application
         
-        # 5. Rejestrujemy endpointy
+        # 5. Rejestrujemy endpointy - UŻYWAMY SPECJALNEJ ŚCIEŻKI
         # 5.1 GUI - strona główna
         async def gui_handler(request):
             html_path = os.path.join(os.path.dirname(__file__), 'templates', 'index.html')
@@ -40,7 +39,10 @@ async def enable(services):
                     html = f.read()
                 return web.Response(text=html, content_type='text/html')
             except:
-                return web.Response(text='<h1>DetMeter</h1><p>GUI template missing</p>', content_type='text/html')
+                return web.Response(
+                    text='<h1>DetMeter</h1><p>GUI template missing</p><p><a href="/">Back to Caldera</a></p>',
+                    content_type='text/html'
+                )
         
         # 5.2 API - pobierz operacje z Caldera
         async def get_operations_handler(request):
@@ -86,20 +88,40 @@ async def enable(services):
             return web.json_response({
                 'status': 'ok',
                 'plugin': 'detmeter',
-                'endpoints': ['/plugin/detmeter', '/plugin/detmeter/analyze', '/plugin/detmeter/status']
+                'endpoints': {
+                    'gui': '/detmeter/gui',
+                    'api': {
+                        'operations': '/detmeter/api/operations',
+                        'analyze': '/detmeter/api/analyze',
+                        'status': '/detmeter/api/status'
+                    }
+                }
             })
         
-        # 6. Rejestracja ścieżek
-        # WAŻNE: Używamy /plugin/detmeter/... bo tak działa Caldera
-        app.router.add_get('/plugin/detmeter', gui_handler)
-        app.router.add_get('/plugin/detmeter/gui', gui_handler)
-        app.router.add_get('/plugin/detmeter/api/operations', get_operations_handler)
-        app.router.add_post('/plugin/detmeter/api/analyze', analyze_handler)
-        app.router.add_get('/plugin/detmeter/api/status', status_handler)
-        app.router.add_get('/plugin/detmeter/api/health', health_handler)
+        # === WAŻNE: UŻYWAMY /detmeter/* a NIE /plugin/detmeter/* ===
+        # To zapobiega przejęciu wszystkich /plugin/* routes
+        
+        # GUI routes
+        app.router.add_get('/detmeter', gui_handler)
+        app.router.add_get('/detmeter/gui', gui_handler)
+        
+        # API routes
+        app.router.add_get('/detmeter/api/operations', get_operations_handler)
+        app.router.add_post('/detmeter/api/analyze', analyze_handler)
+        app.router.add_get('/detmeter/api/status', status_handler)
+        app.router.add_get('/detmeter/api/health', health_handler)
+        
+        # Link do pluginu w głównym interfejsie Caldera
+        async def detmeter_redirect(request):
+            """Redirect do głównego GUI pluginu"""
+            raise web.HTTPFound('/detmeter')
+        
+        # Rejestrujemy pod /plugin/detmeter ale tylko jako redirect
+        app.router.add_get('/plugin/detmeter', detmeter_redirect)
         
         logger.info('[DetMeter] Plugin enabled successfully!')
-        logger.info('[DetMeter] Access at: http://localhost:8443/plugin/detmeter')
+        logger.info('[DetMeter] Access at: http://localhost:8443/detmeter')
+        logger.info('[DetMeter] Caldera GUI still at: http://localhost:8443/')
         
         return True
         
