@@ -1,17 +1,24 @@
 name: detmeter
-description: SIEM Systems Detection Rate Validator
+description: Compare and measure SIEM detection effectiveness
 version: 1.0.0
 access:
   - admin
   - red
   - blue
-gui:
+data:
+  gui_path: /detmeter
+  icon: chart-bar
+  weight: 100
+routes:
   - path: /detmeter
-    name: SIEM DetMeter
+    name: DetMeter
     component: DetMeter
-    icon: chart-bar
-    order: 90
-    permissions:
-      - red
-      - blue
-      - admin
+    access: [admin, red, blue]
+  - path: /detmeter/api/analyze
+    name: Analyze Operation
+    component: API
+    access: [admin, red]
+  - path: /detmeter/api/status
+    name: SIEM Status
+    component: API
+    access: [admin, red, blue]
