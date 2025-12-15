@@ -1,5 +1,0 @@
-name: DetMeter
-description: SIEM detection effectiveness validator
-version: 1.0.0
-address: /plugin/detmeter/gui
-access: blue
