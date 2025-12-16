@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ plugin_name }} - MITRE Caldera</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        .plugin-container {
+            padding: 0;
+            max-width: 100%;
+        }
+        
+        .plugin-loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-size: 18px;
+            color: #666;
+        }
+        
+        .plugin-loading i {
+            margin-right: 10px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .plugin-error {
+            text-align: center;
+            padding: 40px;
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="plugin-container">
+        <div id="detmeter-app">
+            <div class="plugin-loading">
+                <i class="fas fa-spinner"></i>
+                Loading DetMeter plugin...
+            </div>
+        </div>
+    </div>
+    
+    <!-- Vue.js -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.30.0/index.min.js"></script>
+    
+    <!-- DetMeter Vue Component -->
+    <script type="module">
+        // Wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mount Vue app
+            const app = Vue.createApp({
+                template: `
+                    <DetMeter />
+                `,
+                components: {
+                    DetMeter: {{ vue_component|safe }}
+                }
+            });
+            
+            app.mount('#detmeter-app');
+        });
+    </script>
+</body>
+</html>
