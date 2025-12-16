@@ -297,4 +297,448 @@
                 
                 <div>
                     <button class="btn btn-primary" onclick="testConnection()">Test Connection</button>
-                    <button class="btn btn-success" onclick="save
+                    <button class="btn btn-success" onclick="saveConfig()">Save Configuration</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Detections Tab -->
+        <div id="detections-tab" class="tab-content">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0;">Live Detections</h2>
+                    <div>
+                        <select id="operation-filter" onchange="loadDetections()" style="margin-right: 10px;">
+                            <option value="">All Operations</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="loadDetections()">Refresh</button>
+                        <button class="btn btn-danger" onclick="clearData()">Clear</button>
+                    </div>
+                </div>
+                
+                <div id="detections-loading" class="loading">Loading detections...</div>
+                <div id="detections-list" class="detection-list" style="display: none;"></div>
+            </div>
+        </div>
+        
+        <!-- Analytics Tab -->
+        <div id="analytics-tab" class="tab-content">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0;">Detection Analytics</h2>
+                    <select id="summary-operation" onchange="loadSummary()">
+                        <option value="">All Operations</option>
+                    </select>
+                </div>
+                
+                <div id="summary-stats" class="stats-grid" style="display: none;"></div>
+                <div id="summary-loading" class="loading">Generating analytics...</div>
+                
+                <div id="timeline-container" style="display: none;">
+                    <h3>Detection Timeline</h3>
+                    <div class="chart-container">
+                        <canvas id="timeline-chart"></canvas>
+                    </div>
+                </div>
+                
+                <div id="operation-stats" style="margin-top: 30px; display: none;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentTab = 'config';
+        let chartInstance = null;
+        let operations = [];
+        
+        function switchTab(tabName) {
+            // Update tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            
+            currentTab = tabName;
+            
+            // Load data for tab
+            if (tabName === 'detections') {
+                loadOperations();
+                loadDetections();
+            } else if (tabName === 'analytics') {
+                loadOperations();
+                loadSummary();
+            }
+        }
+        
+        async function loadConfig() {
+            try {
+                const response = await fetch('/plugin/detmeter/config');
+                const config = await response.json();
+                
+                document.getElementById('siem-select').value = config.selected_siem || '';
+                document.getElementById('api-endpoint').value = config.api_endpoint || '';
+                document.getElementById('api-key').value = config.api_key || '';
+                document.getElementById('verify-ssl').checked = config.verify_ssl !== false;
+            } catch (error) {
+                showAlert('Error loading configuration', 'error');
+            }
+        }
+        
+        async function testConnection() {
+            const config = getConfig();
+            
+            if (!config.selected_siem || !config.api_endpoint || !config.api_key) {
+                showAlert('Please fill in all required fields', 'error');
+                return;
+            }
+            
+            showAlert('Testing connection...', 'info');
+            
+            try {
+                const response = await fetch('/plugin/detmeter/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    showAlert(`✅ ${result.message}`, 'success');
+                } else {
+                    showAlert(`❌ ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`❌ Connection failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function saveConfig() {
+            const config = getConfig();
+            
+            try {
+                const response = await fetch('/plugin/detmeter/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                showAlert('Configuration saved successfully', 'success');
+            } catch (error) {
+                showAlert(`Error saving configuration: ${error.message}`, 'error');
+            }
+        }
+        
+        async function loadOperations() {
+            try {
+                const response = await fetch('/plugin/detmeter/operations');
+                operations = await response.json();
+                
+                // Update operation filters
+                const operationFilter = document.getElementById('operation-filter');
+                const summaryOperation = document.getElementById('summary-operation');
+                
+                // Clear existing options except first
+                operationFilter.innerHTML = '<option value="">All Operations</option>';
+                summaryOperation.innerHTML = '<option value="">All Operations</option>';
+                
+                operations.forEach(op => {
+                    const option1 = document.createElement('option');
+                    option1.value = op.id;
+                    option1.textContent = `${op.name} (${op.state})`;
+                    operationFilter.appendChild(option1);
+                    
+                    const option2 = document.createElement('option');
+                    option2.value = op.id;
+                    option2.textContent = `${op.name} (${op.state})`;
+                    summaryOperation.appendChild(option2);
+                });
+            } catch (error) {
+                console.error('Error loading operations:', error);
+            }
+        }
+        
+        async function loadDetections() {
+            const operationId = document.getElementById('operation-filter').value;
+            let url = '/plugin/detmeter/data';
+            
+            if (operationId) {
+                url += `?operation_id=${operationId}`;
+            }
+            
+            document.getElementById('detections-loading').style.display = 'block';
+            document.getElementById('detections-list').style.display = 'none';
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                displayDetections(data);
+            } catch (error) {
+                console.error('Error loading detections:', error);
+            } finally {
+                document.getElementById('detections-loading').style.display = 'none';
+                document.getElementById('detections-list').style.display = 'block';
+            }
+        }
+        
+        function displayDetections(data) {
+            const container = document.getElementById('detections-list');
+            
+            if (data.blue.length === 0 && data.siem.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #6c757d;">No detections found</p>';
+                return;
+            }
+            
+            let html = '';
+            
+            // Combine and sort by timestamp
+            const allDetections = [
+                ...data.blue.map(d => ({ ...d, type: 'blue' })),
+                ...data.siem.map(d => ({ ...d, type: 'siem' }))
+            ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            allDetections.forEach(detection => {
+                const time = new Date(detection.timestamp).toLocaleString();
+                
+                html += `<div class="detection-item">`;
+                html += `<span class="detection-badge ${detection.type === 'blue' ? 'badge-blue' : 'badge-siem'}">`;
+                html += detection.type === 'blue' ? '🔵 Blue Agent' : '🛡️ SIEM';
+                html += `</span>`;
+                
+                html += `<div style="flex: 1;">`;
+                
+                if (detection.type === 'blue') {
+                    html += `<strong>Command:</strong> ${detection.command.substring(0, 100)}`;
+                    if (detection.command.length > 100) html += '...';
+                } else {
+                    html += `<strong>Rule:</strong> ${detection.details.rule_id || 'Unknown'}`;
+                }
+                
+                html += `<br><small style="color: #6c757d;">${time}</small>`;
+                html += `</div>`;
+                
+                html += `<div style="text-align: right;">`;
+                html += `<small>Op ${detection.operation_id}</small>`;
+                html += `</div>`;
+                
+                html += `</div>`;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        async function loadSummary() {
+            const operationId = document.getElementById('summary-operation').value;
+            let url = '/plugin/detmeter/summary';
+            
+            if (operationId) {
+                url += `?operation_id=${operationId}`;
+            }
+            
+            document.getElementById('summary-loading').style.display = 'block';
+            document.getElementById('summary-stats').style.display = 'none';
+            document.getElementById('timeline-container').style.display = 'none';
+            document.getElementById('operation-stats').style.display = 'none';
+            
+            try {
+                const response = await fetch(url);
+                const summary = await response.json();
+                
+                displaySummary(summary);
+            } catch (error) {
+                console.error('Error loading summary:', error);
+            } finally {
+                document.getElementById('summary-loading').style.display = 'none';
+                document.getElementById('summary-stats').style.display = 'grid';
+                document.getElementById('timeline-container').style.display = 'block';
+                document.getElementById('operation-stats').style.display = 'block';
+            }
+        }
+        
+        function displaySummary(summary) {
+            // Display stats
+            const statsGrid = document.getElementById('summary-stats');
+            
+            statsGrid.innerHTML = `
+                <div class="stat-card">
+                    <div>Blue Detections</div>
+                    <div class="stat-value" style="color: var(--secondary-color);">${summary.total.blue}</div>
+                </div>
+                <div class="stat-card">
+                    <div>SIEM Detections</div>
+                    <div class="stat-value" style="color: #9b59b6;">${summary.total.siem}</div>
+                </div>
+                <div class="stat-card">
+                    <div>Detection Coverage</div>
+                    <div class="stat-value" style="color: var(--success-color);">${summary.total.coverage.toFixed(1)}%</div>
+                </div>
+            `;
+            
+            // Create timeline chart
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            
+            const ctx = document.getElementById('timeline-chart').getContext('2d');
+            
+            // Prepare timeline data
+            const bluePoints = summary.timeline.filter(d => d.type === 'blue');
+            const siemPoints = summary.timeline.filter(d => d.type === 'siem');
+            
+            chartInstance = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Blue Agent',
+                            data: bluePoints.map((point, index) => ({
+                                x: point.time,
+                                y: index,
+                                label: point.label
+                            })),
+                            backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                            borderColor: 'rgba(52, 152, 219, 1)',
+                            pointRadius: 6,
+                            pointHoverRadius: 8
+                        },
+                        {
+                            label: 'SIEM',
+                            data: siemPoints.map((point, index) => ({
+                                x: point.time,
+                                y: index + bluePoints.length,
+                                label: point.label
+                            })),
+                            backgroundColor: 'rgba(155, 89, 182, 0.7)',
+                            borderColor: 'rgba(155, 89, 182, 1)',
+                            pointRadius: 6,
+                            pointHoverRadius: 8
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Detection Timeline'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.raw.label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'minute',
+                                displayFormats: {
+                                    minute: 'HH:mm'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            display: false
+                        }
+                    }
+                }
+            });
+            
+            // Display operation stats
+            const operationStats = document.getElementById('operation-stats');
+            
+            let html = '<h3>Operation Details</h3>';
+            
+            for (const [opId, stats] of Object.entries(summary.by_operation)) {
+                const op = operations.find(o => o.id === opId) || { name: `Operation ${opId}` };
+                
+                html += `
+                    <div class="card" style="margin-bottom: 15px;">
+                        <h4>${op.name}</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                            <div>
+                                <strong>Blue Detections:</strong> ${stats.blue_count}
+                            </div>
+                            <div>
+                                <strong>SIEM Detections:</strong> ${stats.siem_count}
+                            </div>
+                            <div>
+                                <strong>Coverage:</strong> ${stats.coverage.toFixed(1)}%
+                            </div>
+                            ${stats.avg_delay_seconds > 0 ? `
+                            <div>
+                                <strong>Avg Delay:</strong> ${stats.avg_delay_seconds.toFixed(2)}s
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            operationStats.innerHTML = html;
+        }
+        
+        async function clearData() {
+            const operationId = document.getElementById('operation-filter').value;
+            
+            if (!confirm(`Clear detection data for ${operationId ? 'selected operation' : 'all operations'}?`)) {
+                return;
+            }
+            
+            try {
+                await fetch('/plugin/detmeter/clear', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ operation_id: operationId || null })
+                });
+                
+                loadDetections();
+                showAlert('Data cleared successfully', 'success');
+            } catch (error) {
+                showAlert('Error clearing data', 'error');
+            }
+        }
+        
+        function getConfig() {
+            return {
+                selected_siem: document.getElementById('siem-select').value,
+                api_endpoint: document.getElementById('api-endpoint').value,
+                api_key: document.getElementById('api-key').value,
+                verify_ssl: document.getElementById('verify-ssl').checked
+            };
+        }
+        
+        function showAlert(message, type) {
+            const alertDiv = document.getElementById('config-alert');
+            alertDiv.textContent = message;
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfig();
+            loadOperations();
+        });
+    </script>
+</body>
+</html>
