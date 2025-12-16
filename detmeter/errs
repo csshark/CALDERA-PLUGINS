@@ -1,16 +1,15 @@
-x: {
-  type: 'linear',
-  ticks: {
-    callback: (value) => {
-      const date = new Date(value);
-      return date.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
-  },
-  title: {
-    display: true,
-    text: 'Time'
-  }
-}
+const bluePoints = this.combinedDetections
+  .filter(d => d.type === 'blue')
+  .map((d, i) => ({
+    x: new Date(d.timestamp).getTime(),
+    y: i,
+    label: `Blue: ${d.command.substring(0, 30)}...`
+  }));
+
+const siemPoints = this.combinedDetections
+  .filter(d => d.type === 'siem')
+  .map((d, i) => ({
+    x: new Date(d.timestamp).getTime(),
+    y: i + bluePoints.length,
+    label: `SIEM: ${d.rule_id || 'Unknown'}`
+  }));
