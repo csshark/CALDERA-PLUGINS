@@ -1,7 +1,0 @@
-name: DetMeter
-description: Compare Blue agent detections with SIEM detections
-version: 1.0.0
-caldera_version: 5.3.0
-author: Caldera Team
-contact: caldera@mitre.org
-enabled: true
