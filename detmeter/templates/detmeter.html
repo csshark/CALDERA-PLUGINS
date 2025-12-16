@@ -1,460 +1,300 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>DetMeter - SIEM vs Blue Agent</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ plugin_name }} - MITRE Caldera</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background: #f5f5f5; }
-        .container { max-width: 1400px; margin: 0 auto; }
-        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
-        h2 { color: #34495e; margin-top: 0; }
-        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50; }
-        input, select { width: 100%; padding: 8px; border: 1px solid #bdc3c7; border-radius: 4px; box-sizing: border-box; }
-        .btn { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; margin-right: 10px; }
-        .btn:hover { background: #2980b9; }
-        .btn-success { background: #27ae60; }
-        .btn-success:hover { background: #219653; }
-        .btn-danger { background: #e74c3c; }
-        .btn-danger:hover { background: #c0392b; }
-        .status { padding: 10px; border-radius: 4px; margin-top: 10px; }
-        .status-success { background: #d5f4e6; color: #27ae60; }
-        .status-error { background: #fadbd8; color: #e74c3c; }
-        .detection-row { display: grid; grid-template-columns: 1fr 2fr 3fr 2fr; gap: 10px; padding: 10px; border-bottom: 1px solid #ecf0f1; }
-        .detection-header { font-weight: bold; background: #ecf0f1; }
-        .blue-badge { background: #3498db; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
-        .siem-badge { background: #9b59b6; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
-        .chart-container { height: 400px; margin-top: 20px; }
-        .tab-container { display: flex; border-bottom: 2px solid #3498db; margin-bottom: 20px; }
-        .tab { padding: 10px 20px; cursor: pointer; background: #ecf0f1; margin-right: 5px; border-radius: 8px 8px 0 0; }
-        .tab.active { background: #3498db; color: white; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-bg: #f8f9fa;
+            --border-color: #dee2e6;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--light-bg);
+            margin: 0;
+            padding: 20px;
+            color: var(--primary-color);
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 14px;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.3s;
+        }
+        
+        .tab:hover {
+            color: var(--secondary-color);
+        }
+        
+        .tab.active {
+            color: var(--secondary-color);
+            border-bottom: 3px solid var(--secondary-color);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+        
+        .btn-primary {
+            background: var(--secondary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #219653;
+        }
+        
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .alert {
+            padding: 12px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        .alert-success {
+            background: #d5f4e6;
+            color: var(--success-color);
+            border: 1px solid #a3e9c4;
+        }
+        
+        .alert-error {
+            background: #fadbd8;
+            color: var(--danger-color);
+            border: 1px solid #f5b7b1;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .detection-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .detection-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+        }
+        
+        .detection-item:last-child {
+            border-bottom: none;
+        }
+        
+        .detection-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+        
+        .badge-blue {
+            background: #d6eaf8;
+            color: #21618c;
+        }
+        
+        .badge-siem {
+            background: #e8daef;
+            color: #6c3483;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-top: 20px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+        
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--secondary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔍 DetMeter - SIEM Detection Analytics</h1>
+        <div class="header">
+            <h1 style="margin: 0; color: var(--primary-color);">🔍 {{ plugin_name }}</h1>
+            <p style="margin: 5px 0 0 0; color: #6c757d;">{{ plugin_description }}</p>
+        </div>
         
-        <div class="tab-container">
-            <div class="tab active" onclick="switchTab('config')">Configuration</div>
-            <div class="tab" onclick="switchTab('live')">Live Detections</div>
-            <div class="tab" onclick="switchTab('summary')">Analytics</div>
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('config')">Configuration</button>
+            <button class="tab" onclick="switchTab('detections')">Live Detections</button>
+            <button class="tab" onclick="switchTab('analytics')">Analytics</button>
         </div>
         
         <!-- Configuration Tab -->
         <div id="config-tab" class="tab-content active">
             <div class="card">
-                <h2>SIEM Connection</h2>
-                <div class="config-grid">
-                    <div class="form-group">
-                        <label>SIEM System</label>
-                        <select id="siemSelect">
-                            <option value="">-- Select SIEM --</option>
-                            <option value="Splunk">Splunk</option>
-                            <option value="QRadar">IBM QRadar</option>
-                            <option value="Elastic">Elastic SIEM</option>
-                            <option value="ArcSight">ArcSight</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>API Endpoint</label>
-                        <input type="text" id="apiEndpoint" placeholder="https://your-siem.com:8089">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>API Key / Token</label>
-                        <input type="password" id="apiKey" placeholder="Enter authentication token">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Verify SSL</label>
-                        <select id="verifySSL">
-                            <option value="true">Yes</option>
-                            <option value="false">No (Self-signed)</option>
-                        </select>
-                    </div>
-                </div>
+                <h2 style="margin-top: 0;">SIEM Configuration</h2>
                 
-                <button class="btn" onclick="testConnection()">Test Connection</button>
-                <button class="btn btn-success" onclick="saveConfig()">Save Configuration</button>
-                <div id="configStatus" class="status"></div>
+                <div id="config-alert" class="alert"></div>
                 
-                <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px;">
-                    <h3>SIEM Requirements</h3>
-                    <p><strong>Splunk:</strong> API token with search capabilities</p>
-                    <p><strong>QRadar:</strong> API key with Ariel searches permission</p>
-                    <p><strong>Elastic:</strong> API key with read access to security indices</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Live Detections Tab -->
-        <div id="live-tab" class="tab-content">
-            <div class="card">
-                <h2>Real-time Detections</h2>
-                <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-                    <select id="operationFilter" onchange="refreshData()">
-                        <option value="">All Operations</option>
+                <div class="form-group">
+                    <label for="siem-select">SIEM System</label>
+                    <select id="siem-select">
+                        <option value="">-- Select SIEM --</option>
+                        <option value="Splunk">Splunk</option>
+                        <option value="QRadar">IBM QRadar</option>
+                        <option value="Elastic">Elastic SIEM</option>
                     </select>
-                    <button class="btn" onclick="refreshData()">🔄 Refresh</button>
-                    <button class="btn btn-danger" onclick="clearData()">Clear Data</button>
                 </div>
                 
-                <div id="detectionList">
-                    <!-- Dynamic content will be loaded here -->
-                </div>
-            </div>
-        </div>
-        
-        <!-- Analytics Tab -->
-        <div id="summary-tab" class="tab-content">
-            <div class="card">
-                <h2>Detection Analytics</h2>
-                <div style="margin-bottom: 20px;">
-                    <select id="summaryOperation" onchange="generateSummary()">
-                        <option value="">All Operations</option>
-                    </select>
-                    <button class="btn" onclick="generateSummary()">Generate Report</button>
+                <div class="form-group">
+                    <label for="api-endpoint">API Endpoint</label>
+                    <input type="text" id="api-endpoint" placeholder="https://your-siem.com:8089">
                 </div>
                 
-                <div id="summaryStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
-                    <!-- Stats will be populated here -->
+                <div class="form-group">
+                    <label for="api-key">API Key / Token</label>
+                    <input type="password" id="api-key" placeholder="Enter your API token">
                 </div>
                 
-                <div class="chart-container">
-                    <canvas id="timelineChart"></canvas>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="verify-ssl" checked>
+                        Verify SSL certificates
+                    </label>
                 </div>
                 
-                <div id="detailedSummary" style="margin-top: 30px;">
-                    <!-- Detailed analysis will go here -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        let currentTab = 'config';
-        let chartInstance = null;
-        const DateTime = luxon.DateTime;
-        
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            
-            document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
-            document.getElementById(`${tabName}-tab`).classList.add('active');
-            currentTab = tabName;
-            
-            if (tabName === 'summary') {
-                loadOperations();
-                generateSummary();
-            } else if (tabName === 'live') {
-                loadOperations();
-                refreshData();
-            }
-        }
-        
-        async function testConnection() {
-            const config = getConfig();
-            if (!config.selected_siem || !config.api_endpoint || !config.api_key) {
-                showStatus('Please fill all required fields', 'error');
-                return;
-            }
-            
-            showStatus('Testing connection...', 'info');
-            
-            try {
-                const response = await fetch('/plugin/detmeter/test', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(config)
-                });
-                
-                const result = await response.json();
-                if (result.status === 'success') {
-                    showStatus(`✅ ${result.message}`, 'success');
-                } else {
-                    showStatus(`❌ ${result.message}`, 'error');
-                }
-            } catch (error) {
-                showStatus(`❌ Connection failed: ${error.message}`, 'error');
-            }
-        }
-        
-        async function saveConfig() {
-            const config = getConfig();
-            const response = await fetch('/plugin/detmeter/config', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(config)
-            });
-            
-            showStatus('Configuration saved successfully', 'success');
-        }
-        
-        function getConfig() {
-            return {
-                selected_siem: document.getElementById('siemSelect').value,
-                api_endpoint: document.getElementById('apiEndpoint').value,
-                api_key: document.getElementById('apiKey').value,
-                verify_ssl: document.getElementById('verifySSL').value === 'true'
-            };
-        }
-        
-        async function loadConfig() {
-            try {
-                const response = await fetch('/plugin/detmeter/config');
-                const config = await response.json();
-                
-                document.getElementById('siemSelect').value = config.selected_siem || '';
-                document.getElementById('apiEndpoint').value = config.api_endpoint || '';
-                document.getElementById('apiKey').value = config.api_key || '';
-                document.getElementById('verifySSL').value = config.verify_ssl ? 'true' : 'false';
-            } catch (error) {
-                console.error('Failed to load config:', error);
-            }
-        }
-        
-        async function loadOperations() {
-            try {
-                const response = await fetch('/plugin/detmeter/operations');
-                const operations = await response.json();
-                
-                const operationFilter = document.getElementById('operationFilter');
-                const summaryOperation = document.getElementById('summaryOperation');
-                
-                // Clear existing options except first
-                operationFilter.innerHTML = '<option value="">All Operations</option>';
-                summaryOperation.innerHTML = '<option value="">All Operations</option>';
-                
-                operations.forEach(op => {
-                    const option1 = document.createElement('option');
-                    option1.value = op.id;
-                    option1.textContent = `${op.name} (${op.state})`;
-                    operationFilter.appendChild(option1);
-                    
-                    const option2 = document.createElement('option');
-                    option2.value = op.id;
-                    option2.textContent = `${op.name} (${op.state})`;
-                    summaryOperation.appendChild(option2);
-                });
-            } catch (error) {
-                console.error('Failed to load operations:', error);
-            }
-        }
-        
-        async function refreshData() {
-            const operationId = document.getElementById('operationFilter').value;
-            let url = '/plugin/detmeter/data';
-            if (operationId) {
-                url += `?operation_id=${operationId}`;
-            }
-            
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                let html = '<div class="detection-row detection-header">';
-                html += '<div>Type</div><div>Time</div><div>Details</div><div>Operation</div></div>';
-                
-                // Combine and sort by timestamp
-                const allDetections = [
-                    ...data.blue.map(d => ({...d, type: 'blue'})),
-                    ...data.siem.map(d => ({...d, type: 'siem'}))
-                ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                
-                allDetections.forEach(det => {
-                    const time = DateTime.fromISO(det.timestamp).toLocaleString(DateTime.DATETIME_SHORT);
-                    
-                    html += `<div class="detection-row">`;
-                    html += `<div><span class="${det.type === 'blue' ? 'blue-badge' : 'siem-badge'}">`;
-                    html += `${det.type === 'blue' ? '🔵 Blue Agent' : '🛡️ ' + (det.source || 'SIEM')}`;
-                    html += `</span></div>`;
-                    html += `<div>${time}</div>`;
-                    
-                    if (det.type === 'blue') {
-                        html += `<div><strong>Command:</strong> ${det.command.substring(0, 100)}...</div>`;
-                    } else {
-                        html += `<div><strong>Rule:</strong> ${det.details?.rule_id || 'Unknown'}<br>`;
-                        html += `<small>Confidence: ${det.confidence || 'medium'}</small></div>`;
-                    }
-                    
-                    html += `<div>Op ${det.operation_id}</div>`;
-                    html += `</div>`;
-                });
-                
-                document.getElementById('detectionList').innerHTML = html;
-            } catch (error) {
-                console.error('Failed to load detections:', error);
-            }
-        }
-        
-        async function generateSummary() {
-            const operationId = document.getElementById('summaryOperation').value;
-            let url = '/plugin/detmeter/summary';
-            if (operationId) {
-                url += `?operation_id=${operationId}`;
-            }
-            
-            try {
-                const response = await fetch(url);
-                const summary = await response.json();
-                
-                // Display statistics
-                let statsHtml = '';
-                statsHtml += `<div style="text-align: center; padding: 15px; background: #e8f4f8; border-radius: 8px;">`;
-                statsHtml += `<h3>${summary.overall.blue_detections}</h3><p>Blue Detections</p></div>`;
-                
-                statsHtml += `<div style="text-align: center; padding: 15px; background: #f0e8f8; border-radius: 8px;">`;
-                statsHtml += `<h3>${summary.overall.siem_detections}</h3><p>SIEM Detections</p></div>`;
-                
-                const coveragePercent = (summary.overall.detection_ratio * 100).toFixed(1);
-                statsHtml += `<div style="text-align: center; padding: 15px; background: #e8f8e8; border-radius: 8px;">`;
-                statsHtml += `<h3>${coveragePercent}%</h3><p>Detection Coverage</p></div>`;
-                
-                document.getElementById('summaryStats').innerHTML = statsHtml;
-                
-                // Create timeline chart
-                const ctx = document.getElementById('timelineChart').getContext('2d');
-                
-                if (chartInstance) {
-                    chartInstance.destroy();
-                }
-                
-                // Prepare chart data
-                const timelineData = summary.timeline_data || [];
-                const operations = [...new Set(timelineData.map(d => d.operation))];
-                
-                // Group by operation and type
-                const datasets = [];
-                
-                operations.forEach(opId => {
-                    const bluePoints = timelineData.filter(d => d.operation === opId && d.type === 'blue');
-                    const siemPoints = timelineData.filter(d => d.operation === opId && d.type === 'siem');
-                    
-                    if (bluePoints.length > 0) {
-                        datasets.push({
-                            label: `Op ${opId} - Blue`,
-                            data: bluePoints.map(p => ({
-                                x: p.time,
-                                y: p.index
-                            })),
-                            backgroundColor: 'rgba(52, 152, 219, 0.7)',
-                            borderColor: 'rgba(52, 152, 219, 1)',
-                            pointRadius: 8,
-                            pointStyle: 'circle'
-                        });
-                    }
-                    
-                    if (siemPoints.length > 0) {
-                        datasets.push({
-                            label: `Op ${opId} - SIEM`,
-                            data: siemPoints.map(p => ({
-                                x: p.time,
-                                y: p.index
-                            })),
-                            backgroundColor: 'rgba(155, 89, 182, 0.7)',
-                            borderColor: 'rgba(155, 89, 182, 1)',
-                            pointRadius: 8,
-                            pointStyle: 'rect'
-                        });
-                    }
-                });
-                
-                chartInstance = new Chart(ctx, {
-                    type: 'scatter',
-                    data: {
-                        datasets: datasets
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: 'Detection Timeline'
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        const point = context.raw;
-                                        const time = DateTime.fromISO(point.x).toLocaleString(DateTime.DATETIME_SHORT);
-                                        return `${context.dataset.label} at ${time}`;
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            x: {
-                                type: 'time',
-                                time: {
-                                    unit: 'minute'
-                                },
-                                title: {
-                                    display: true,
-                                    text: 'Time'
-                                }
-                            },
-                            y: {
-                                title: {
-                                    display: true,
-                                    text: 'Detection Sequence'
-                                }
-                            }
-                        }
-                    }
-                });
-                
-                // Display detailed summary
-                let detailedHtml = '<h3>Operation Analysis</h3>';
-                
-                for (const [opId, stats] of Object.entries(summary.by_operation)) {
-                    detailedHtml += `<div style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 4px;">`;
-                    detailedHtml += `<h4>Operation ${opId}</h4>`;
-                    detailedHtml += `<p>Blue Detections: ${stats.blue_count} | SIEM Detections: ${stats.siem_count}</p>`;
-                    detailedHtml += `<p>Coverage: ${(stats.coverage * 100).toFixed(1)}%</p>`;
-                    if (stats.avg_detection_delay_seconds > 0) {
-                        detailedHtml += `<p>Average Detection Delay: ${stats.avg_detection_delay_seconds.toFixed(2)} seconds</p>`;
-                    }
-                    detailedHtml += `</div>`;
-                }
-                
-                document.getElementById('detailedSummary').innerHTML = detailedHtml;
-                
-            } catch (error) {
-                console.error('Failed to generate summary:', error);
-            }
-        }
-        
-        async function clearData() {
-            if (confirm('Are you sure you want to clear all detection data?')) {
-                // This would require a new endpoint to clear data
-                // For now, just refresh
-                refreshData();
-            }
-        }
-        
-        function showStatus(message, type) {
-            const statusDiv = document.getElementById('configStatus');
-            statusDiv.textContent = message;
-            statusDiv.className = 'status';
-            statusDiv.classList.add(`status-${type}`);
-            
-            setTimeout(() => {
-                statusDiv.textContent = '';
-                statusDiv.className = 'status';
-            }, 5000);
-        }
-        
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            loadConfig();
-            loadOperations();
-        });
-    </script>
-</body>
-</html>
+                <div>
+                    <button class="btn btn-primary" onclick="testConnection()">Test Connection</button>
+                    <button class="btn btn-success" onclick="save
