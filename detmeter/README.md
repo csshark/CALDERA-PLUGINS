@@ -9,3 +9,5 @@ In caldera config enable plugin by adding detmeter to plugins list:
 - magma 
 - detmeter #enable me!
 - manx </code></pre>
+
+<b>Important</b>: please note that plugin does not verify if the correct rule got triggered, it just checks if rule got triggered at the same moment that blue agent's did.
