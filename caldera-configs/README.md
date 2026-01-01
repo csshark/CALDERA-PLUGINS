@@ -5,7 +5,7 @@ This doucment serves a companion to official MITRE Caldera documentation.
 
 ## Table of Contents
 <ul>1. Server Config related to <a href=https://caldera.readthedocs.io/en/latest/Server-Configuration.html>Server Configuration<a> section.</ul>
-<ul>2. Sample Production Structure</ul> 
+<ul>2. Key files to modify for your custom production</ul> 
 <ul>3. Custom Plugin Development guide</ul>
 
 
@@ -109,4 +109,11 @@ In Caldera 5.3x < there was a problem with hardcoded port 8888 - Caldera was ser
     logging.info(f"FORCED - Starting server on {forced_host}:{forced_port}")
     await web.TCPSite(runner, forced_host, forced_port).start()</code></pre>
 
-    
+## 1.2 SSL plugin
+The most important things to remember are: 
+<li>SSL plugin uses .pem file with certificate and key in its content.</li>
+<li>Agents deployed on the host sometimes have problems with HTTPS connection, to fix it they can access Caldera instance via backend directly (port 8888).</li>
+
+
+## 2. Customizing MITRE Caldera for production
+Here I am going to drop all files list after delivering project to client :) 
