@@ -79,7 +79,7 @@ ldap:
   group_attr: objectClass
   red_group: organizationalperson
   # DON'T CREATE blue_group here - no need, if the red group attr is not satisfied user will be logged as blue team.
-  # Additional note - I did rewrite the handler code to give support for Active Directory structure (support for filters such as OU= etc.)  
+  # Additional note - I did rewrite the handler code to give support for Active Directory structure (support for filters such as OU= etc.), consider the same action.
 # User Management (disabled when using LDAP)
 users:
   red:
