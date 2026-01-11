@@ -117,10 +117,10 @@ The most important things to remember are:
 
 
 ## 2. Customizing MITRE Caldera for production
-Here I am going to drop all files list after delivering project to client :) 
+
 
 ### Customized files list: 
-<ul><li>default.py (login handler) <a href="">Go to File</a></li></ul>
+<ul><li>default.py (login handler)</li></ul>
 <ul><li>DeployModal.vue (deployment of agents)</li></ul>
 <ul><li>rest_svc.py</li></ul>
 <ul><li>rest_api.py</li></ul>
