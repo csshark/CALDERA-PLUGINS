@@ -1,5 +1,5 @@
 # General purpose 
-This doucment serves a companion to official MITRE Caldera documentation.
+This doucment serves a companion to official MITRE Caldera documentation on the open source community contribution rights.
 
 ---
 
@@ -17,7 +17,7 @@ Instead of using a single local.yml file, it's recommended to create environment
 ability_refresh: 60
 api_key_blue: SECURE_API_KEY
 api_key_red: SECURE_API_KEY
-app.contact.dns.domain: caldera.myorganisation.com
+app.contact.dns.domain: caldera.myorganisation.com #! if you own a dns
 app.contact.dns.socket: 0.0.0.0:8853
 app.contact.gist: API_KEY
 app.contact.html: /weather
@@ -79,6 +79,7 @@ ldap:
   group_attr: objectClass
   red_group: organizationalperson
   # DON'T CREATE blue_group here - no need, if the red group attr is not satisfied user will be logged as blue team.
+  # Additional note - I did rewrite the handler code to give support for Active Directory structure (support for filters such as OU= etc.)  
 # User Management (disabled when using LDAP)
 users:
   red:
@@ -86,7 +87,7 @@ users:
   blue:
     analyst: "secure_password"</code></pre>
 
-Security first. All keys in this config file for production deployment should be ENCRYPTED! 
+Security first. All keys in this config file for production deployment should be at least ENCRYPTED! 
 <pre><code>openssl rand -base64 32  # for encryption_key
 openssl rand -base64 32  # for crypt_salt
 openssl rand -base64 32  # for API keys</code></pre>
@@ -117,3 +118,15 @@ The most important things to remember are:
 
 ## 2. Customizing MITRE Caldera for production
 Here I am going to drop all files list after delivering project to client :) 
+
+### Customized files list: 
+<ul><li>default.py (login handler) <a href="">Go to File</a></li></ul>
+<ul><li>DeployModal.vue (deployment of agents)</li></ul>
+<ul><li>rest_svc.py</li></ul>
+<ul><li>rest_api.py</li></ul>
+
+<b>For custom images or logos</b>:
+<pre><code>/plugins/magma/src/public/favicon.ico
+/plugins/magma/src/assets/img/caldera-logo.png</code></pre>
+
+Screenshot of customized dashboard: 
