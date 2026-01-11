@@ -5,7 +5,7 @@ This doucment serves a companion to official MITRE Caldera documentation on the 
 
 ## Table of Contents
 <ul>1. Server Config related to <a href=https://caldera.readthedocs.io/en/latest/Server-Configuration.html>Server Configuration<a> section.</ul>
-<ul>2. Key files to modify for your custom production</ul> 
+<ul>2. Custom Caldera for production</ul> 
 <ul>3. Custom Plugin Development guide</ul>
 
 
