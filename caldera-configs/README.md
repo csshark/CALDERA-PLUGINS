@@ -130,3 +130,4 @@ Here I am going to drop all files list after delivering project to client :)
 /plugins/magma/src/assets/img/caldera-logo.png</code></pre>
 
 Screenshot of customized dashboard: 
+<img width="1717" height="948" alt="image" src="https://github.com/user-attachments/assets/79ac1b57-135d-4ccb-96e7-1e644faa7f4c" />
