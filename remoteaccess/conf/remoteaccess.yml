@@ -1,4 +1,0 @@
-enabled: true
-description: "Remote SSH credential management and agent deployment"
-caldera_server: "http://CALDERA_SERVER:8888" # customizable 
-default_ssh_port: 22
