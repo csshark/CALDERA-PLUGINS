@@ -1,0 +1,52 @@
+- id: 94f4c6f5-6b3d-4b4e-8a7c-123456789009
+  name: DLP - Obfuscate with Base64 Encoding
+  description: Obfuscates data with Base64 encoding (DLP Test)
+  tactic: defense-evasion
+  technique:
+    attack_id: T1027
+    name: Obfuscated Files or Information
+  platforms:
+    windows:
+      psh:
+        command: |
+          $inputFile = "$env:TEMP\dlp_data_#{paw}.zip";
+          $outputFile = "$env:TEMP\dlp_obfuscated_#{paw}.b64";
+          if (Test-Path $inputFile) {
+              $bytes = [System.IO.File]::ReadAllBytes($inputFile);
+              $base64 = [System.Convert]::ToBase64String($bytes);
+              $base64 | Out-File $outputFile;
+              Write-Output "[DLP] Data obfuscated to Base64: $outputFile";
+          } else {
+              "TestDataForDLP_#{paw}" | Out-File "$env:TEMP\test_data.txt";
+              $bytes = [System.IO.File]::ReadAllBytes("$env:TEMP\test_data.txt");
+              $base64 = [System.Convert]::ToBase64String($bytes);
+              $base64 | Out-File $outputFile;
+              Write-Output "[DLP] Created and obfuscated test data";
+          }
+        payloads: []
+        cleanup: |
+          Remove-Item -Force "$env:TEMP\dlp_obfuscated_#{paw}.b64","$env:TEMP\test_data.txt" -ErrorAction SilentlyContinue
+        uploads:
+          - $env:TEMP\dlp_obfuscated_#{paw}.b64
+
+- id: 94f4c6f5-6b3d-4b4e-8a7c-123456789012
+  name: DLP - Clear Event Logs
+  description: Clears Windows event logs to remove traces (DLP Test)
+  tactic: defense-evasion
+  technique:
+    attack_id: T1070.001
+    name: Clear Windows Event Logs
+  platforms:
+    windows:
+      psh:
+        command: |
+          $logs = "Security","System","Application";
+          foreach ($log in $logs) {
+              try {
+                  wevtutil clear-log $log 2>$null;
+                  Write-Output "[DLP] Cleared $log log";
+              } catch {
+                  Write-Output "[DLP] Failed to clear $log log (may need admin)";
+              }
+          }
+        payloads: []
