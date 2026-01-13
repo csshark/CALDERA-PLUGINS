@@ -1,0 +1,36 @@
+- id: 94f4c6f5-6b3d-4b4e-8a7c-123456789008
+  name: DLP - Detect Security Software
+  description: Detects running security/DLP processes (DLP Test)
+  tactic: discovery
+  technique:
+    attack_id: T1082
+    name: System Information Discovery
+  platforms:
+    windows:
+      psh:
+        command: |
+          $securityProducts = @{
+              "McAfee" = @("McAfee", "mfevtps", "mfemms");
+              "Symantec" = @("Symantec", "Sep", "ccSvcHst");
+              "CrowdStrike" = @("CrowdStrike", "CSFalcon");
+              "Carbon Black" = @("Carbon", "cb");
+              "Trend Micro" = @("Trend Micro", "tm");
+              "DLP" = @("DLP", "Forcepoint", "Digital Guardian")
+              "Trellix" = @("Trellix", "trellix", "Trellix DLP")
+          };
+          Write-Output "[DLP] Security Software Detection:";
+          $processes = Get-Process | Select-Object -ExpandProperty ProcessName;
+          foreach ($vendor in $securityProducts.Keys) {
+              foreach ($pattern in $securityProducts[$vendor]) {
+                  if ($processes -match $pattern) {
+                      Write-Output "  - FOUND: $vendor ($pattern)";
+                      break;
+                  }
+              }
+          }
+          Write-Output "`n[DLP] Installed Security Software:";
+          $installed = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Where-Object { $_.DisplayName -match "McAfee|Symantec|Norton|Trend|Kaspersky|Bitdefender|DLP" } | Select-Object DisplayName;
+          foreach ($app in $installed) {
+              Write-Output "  - $($app.DisplayName)";
+          }
+        payloads: []
