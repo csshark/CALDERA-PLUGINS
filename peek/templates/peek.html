@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Browser Dashboard - Caldera</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="/browser_static/browser.css" rel="stylesheet">
+</head>
+<body>
+    <div class="browser-container">
+        <div class="browser-header">
+            <div class="nav-buttons">
+                <button class="nav-btn siem-btn" onclick="navigateTo('siem')" title="SIEM Dashboard">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>SIEM</span>
+                </button>
+                
+                <button class="nav-btn home-btn" onclick="navigateTo('home')" title="Home">
+                    <i class="fas fa-home"></i>
+                    <span>Home</span>
+                </button>
+                
+                <button class="nav-btn back-btn" onclick="goBack()" title="Go Back">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back</span>
+                </button>
+            </div>
+            
+            <div class="url-display">
+                <span id="current-url">https://www.google.com</span>
+            </div>
+        </div>
+
+        <div class="browser-frame-container">
+            <iframe id="browser-frame" 
+                    src="https://www.google.com" 
+                    frameborder="0" 
+                    sandbox="allow-same-origin allow-scripts allow-forms allow-popups">
+            </iframe>
+        </div>
+
+        <div class="operation-status">
+            <div class="status-header">
+                <i class="fas fa-play-circle"></i>
+                <h3>Current Operation</h3>
+            </div>
+            <div class="status-content">
+                <div class="status-item">
+                    <span class="label">Name:</span>
+                    <span id="op-name" class="value">No active operation</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">State:</span>
+                    <span id="op-state" class="value idle">idle</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Started:</span>
+                    <span id="op-start" class="value">-</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Agents:</span>
+                    <span id="op-agents" class="value">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/browser_static/browser.js"></script>
+</body>
+</html>
