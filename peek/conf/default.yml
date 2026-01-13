@@ -1,0 +1,11 @@
+name: peek
+urls:
+  siem: https://your-siem-system.internal/dashboard
+  home: https://www.google.com
+  operations: https://caldera.local/campaign/operations
+  attacks: https://attack.mitre.org
+  default: https://www.google.com
+iframe:
+  height: 600px
+  width: 100%
+refresh_interval: 30000
