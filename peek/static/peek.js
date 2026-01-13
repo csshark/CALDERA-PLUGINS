@@ -1,10 +1,10 @@
-class BrowserDashboard {
+class PeekBrowser {
     constructor() {
         this.history = [];
         this.currentIndex = -1;
-        this.currentUrl = 'https://www.google.com';
-        this.iframe = document.getElementById('browser-frame');
-        this.urlDisplay = document.getElementById('current-url');
+        this.currentUrl = '';
+        this.urls = {};
+        this.iframe = document.getElementById('peek-frame');
         this.opName = document.getElementById('op-name');
         this.opState = document.getElementById('op-state');
         this.opStart = document.getElementById('op-start');
@@ -13,51 +13,48 @@ class BrowserDashboard {
         this.init();
     }
 
-    init() {
+    async init() {
+        await this.loadUrls();
         this.loadOperationStatus();
-        setInterval(() => this.loadOperationStatus(), 30000);
+        setInterval(() => this.loadOperationStatus(), 5000);
         
-        this.iframe.onload = () => {
-            this.urlDisplay.textContent = this.iframe.src;
-        };
+        if (this.urls.home) {
+            this.navigateTo('home');
+        }
     }
 
-    async navigateTo(target) {
+    async loadUrls() {
         try {
-            const response = await fetch('/plugin/peek/navigate', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({target: target})
-            });
-            
-            const data = await response.json();
-            
-            this.history.push(this.currentUrl);
-            this.currentIndex = this.history.length - 1;
-            this.currentUrl = data.url;
-            
-            this.iframe.src = data.url;
-            this.urlDisplay.textContent = data.url;
-            
+            const response = await fetch('/plugin/peek/urls');
+            this.urls = await response.json();
         } catch (error) {
-            console.error('Navigation error:', error);
+            console.error('Failed to load URLs:', error);
+            this.urls = {};
+        }
+    }
+
+    navigateTo(target) {
+        if (this.urls[target]) {
+            if (this.currentUrl) {
+                this.history.push(this.currentUrl);
+                this.currentIndex = this.history.length - 1;
+            }
+            this.currentUrl = this.urls[target];
+            this.iframe.src = this.urls[target];
         }
     }
 
     goBack() {
         if (this.currentIndex > 0) {
             this.currentIndex--;
-            const previousUrl = this.history[this.currentIndex];
-            
-            this.iframe.src = previousUrl;
-            this.currentUrl = previousUrl;
-            this.urlDisplay.textContent = previousUrl;
+            this.currentUrl = this.history[this.currentIndex];
+            this.iframe.src = this.currentUrl;
         }
     }
 
     async loadOperationStatus() {
         try {
-            const response = await fetch('/plugin/browser/current_operation');
+            const response = await fetch('/plugin/peek/operation');
             const data = await response.json();
             
             this.opName.textContent = data.name;
@@ -65,7 +62,6 @@ class BrowserDashboard {
             this.opState.className = `value ${data.state}`;
             this.opStart.textContent = data.start || '-';
             this.opAgents.textContent = data.agents || 0;
-            
         } catch (error) {
             console.error('Failed to load operation status:', error);
         }
@@ -73,14 +69,5 @@ class BrowserDashboard {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    window.browserDashboard = new BrowserDashboard();
-    
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            this.style.transform = 'scale(0.98)';
-            setTimeout(() => {
-                this.style.transform = '';
-            }, 150);
-        });
-    });
+    window.peek = new PeekBrowser();
 });
