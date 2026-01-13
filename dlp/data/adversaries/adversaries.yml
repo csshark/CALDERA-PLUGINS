@@ -1,0 +1,37 @@
+- id: 94f4c6f5-6b3d-4b4e-8a7c-123456789101
+  name: USB Data Thief
+  description: Basic USB-based data theft adversary for testing physical media controls
+  atomic_ordering:
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789001
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789003
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789004
+
+- id: 94f4c6f5-6b3d-4b4e-8a7c-123456789102
+  name: Insider Threat
+  description: Malicious insider with network access testing email and web exfiltration
+  atomic_ordering:
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789001
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789003
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789006
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789010
+
+- id: 94f4c6f5-6b3d-4b4e-8a7c-123456789103
+  name: Advanced APT Group
+  description: Sophisticated threat actor with multiple exfiltration methods and DLP evasion
+  atomic_ordering:
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789002
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789008
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789009
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789004
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789007
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789012
+
+- id: 94f4c6f5-6b3d-4b4e-8a7c-123456789104
+  name: DLP Evasion Specialist
+  description: Adversary focused on bypassing DLP controls using various techniques
+  atomic_ordering:
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789008
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789001
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789009
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789005
+    - 94f4c6f5-6b3d-4b4e-8a7c-123456789011
