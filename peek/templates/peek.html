@@ -1,41 +1,31 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Peek - Check Detections from Caldera directly</title>
+    <title>Peek - Caldera SIEM Viewer</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="/browser_static/browser.css" rel="stylesheet">
+    <link href="/peek_static/peek.css" rel="stylesheet">
 </head>
 <body>
-    <div class="browser-container">
-        <div class="browser-header">
+    <div class="peek-container">
+        <div class="peek-header">
             <div class="nav-buttons">
-                <button class="nav-btn siem-btn" onclick="navigateTo('siem')" title="SIEM Dashboard">
+                <button class="nav-btn siem-btn" onclick="navigateTo('siem')">
                     <i class="fas fa-project-diagram"></i>
                     <span>SIEM</span>
                 </button>
-                
-                <button class="nav-btn home-btn" onclick="navigateTo('home')" title="Home">
+                <button class="nav-btn home-btn" onclick="navigateTo('home')">
                     <i class="fas fa-home"></i>
                     <span>Home</span>
                 </button>
-                
-                <button class="nav-btn back-btn" onclick="goBack()" title="Go Back">
+                <button class="nav-btn back-btn" onclick="goBack()">
                     <i class="fas fa-arrow-left"></i>
                     <span>Back</span>
                 </button>
             </div>
-            
-            <div class="url-display">
-                <span id="current-url">https://www.google.com</span>
-            </div>
         </div>
 
-        <div class="browser-frame-container">
-            <iframe id="browser-frame" 
-                    src="https://www.google.com" 
-                    frameborder="0" 
-                    sandbox="allow-same-origin allow-scripts allow-forms allow-popups">
-            </iframe>
+        <div class="peek-frame-container">
+            <iframe id="peek-frame" frameborder="0" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
         </div>
 
         <div class="operation-status">
@@ -64,6 +54,6 @@
         </div>
     </div>
 
-    <script src="/peek/peek.js"></script>
+    <script src="/peek_static/peek.js"></script>
 </body>
 </html>
