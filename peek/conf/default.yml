@@ -1,7 +1,0 @@
-name: peek
-urls:
-  siem: https://your-siem-system.com/dashboard
-  home: https://your-internal-dashboard.com
-  attacks: https://attack.mitre.org
-  reports: https://your-reporting-system.com
-  caldera_ops: https://localhost:8888/operations
