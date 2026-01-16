@@ -13,6 +13,7 @@ MITRE Caldera works different in user specific environment, usually it is necess
 ## Plugins list
 ### Released
 <ul><li><b>dlp</b> - Add DLP adversaries to your MITRE Caldera.</li></ul>
+
 ### Alpha stage
 <ul><li><b>de(t)meter</b> - Detection Meter. Plugin that allows you to compare detection of your SIEM agent with Caldera's blue agent. It allows for real-time visualization of operation results. </li></ul>
 
