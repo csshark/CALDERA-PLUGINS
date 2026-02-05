@@ -122,12 +122,12 @@ The most important things to remember are:
 ### Customized files list: 
 <ul><li>default.py (login handler)</li></ul>
 <ul><li>DeployModal.vue (deployment of agents)</li></ul>
-<ul><li>rest_svc.py</li></ul>
-<ul><li>rest_api.py</li></ul>
+<ul><li>rest_svc.py (enchance handling endpoints)</li></ul>
+<ul><li>rest_api.py (enchance handling endpoints)</li></ul>
 
 <b>For custom images or logos</b>:
 <pre><code>/plugins/magma/src/public/favicon.ico
 /plugins/magma/src/assets/img/caldera-logo.png</code></pre>
 
 
-MITRE Caldera allows a lot of customizations (yes, you need to create them) depending on your organization requirements.
+MITRE Caldera allows a lot of customizations (yes, you need to create them) depending on your organization requirements. In my case Caldera is customized via /magma plugin and almost every single core file is rebuilt by me. 
