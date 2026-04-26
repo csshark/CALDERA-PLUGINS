@@ -18,6 +18,8 @@ MITRE Caldera works different in user specific environment, usually it is necess
 <ul><li><b>de(t)meter</b> - Detection Meter. Plugin that allows you to compare detection of your SIEM agent with Caldera's blue agent. It allows for real-time visualization of operation results. </li></ul>
 
 <b>Important:</b> All of the plugins listed above are in alpha stage, they might not work properly - I am actively trying to maintaing all of the projects and plugins.  
+## Another Enchancements
+<li>Better LDAP <a href=https://github.com/csshark/caldera-better-ldap>[View on GitHub!]</li>
 
 ## Compatibility 
 Plugins are currently in alpha stage, dedicated for Caldera in version 5.3.0. 
